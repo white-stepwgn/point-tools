@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Tasker 用ギフトデータ</title>
+</head>
+<body>
+  <h1>最新ギフトデータ</h1>
+
+  <!-- 最新ギフト JSON -->
+  <div id="gift_data">
+    {"room_id":"490133","user":"ひろ✨","gift_id":2,"gift_name":"星（赤）","count":10}
+  </div>
+
+  <script>
+    // 将来的に JS で自動更新も可能（数秒ごとに fetch）
+    // fetch('/latest.json').then(r => r.json()).then(data => {
+    //   document.getElementById('gift_data').textContent = JSON.stringify(data);
+    // });
+  </script>
+</body>
+</html>

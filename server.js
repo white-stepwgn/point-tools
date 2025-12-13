@@ -1,9 +1,9 @@
-
 // ===============================
 // server.js（Node22 + ESM / Render 配信用）
 // ===============================
 import express from "express";
 import fetch from "node-fetch";
+import * as cheerio from 'cheerio';
 import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -165,6 +165,40 @@ app.get("/api/event_points", async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "Failed to fetch event data" });
+    }
+});
+
+// ===============================
+// Feature: Scrape Campaign Ranking
+app.get('/api/campaign_ranking', async (req, res) => {
+    try {
+        const url = 'https://public-api.showroom-cdn.com/season_award_ranking/67?limit=100';
+        console.log(`Fetching API: ${url}`);
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const data = await response.json();
+
+        if (!data.ranking_list) {
+            console.log('No ranking_list found in response');
+            return res.json([]);
+        }
+
+        const rankings = data.ranking_list.map(item => ({
+            room_id: item.room_id,  // Add room_id for entry tracking
+            rank: item.rank,
+            name: item.room ? item.room.name : 'Unknown',
+            points: item.score,
+            url: item.room && item.room.url_key ? `https://www.showroom-live.com/${item.room.url_key}` : null
+        }));
+
+        // Sort just in case
+        rankings.sort((a, b) => a.rank - b.rank);
+
+        res.json(rankings);
+    } catch (error) {
+        console.error('Scraping error:', error);
+        res.status(500).json({ error: 'Failed to fetch ranking' });
     }
 });
 

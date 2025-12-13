@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Room Gift Monitor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            background: #f0f0f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #global-header {
+            background: #333;
+            color: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        #global-header input {
+            padding: 5px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        .window-count-btn {
+            padding: 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .window-count-btn:hover {
+            background: #1976D2;
+        }
+
+        .test-user-btn,
+        .test-count-btn {
+            padding: 8px;
+            background: white;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .test-user-btn:hover,
+        .test-count-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .test-user-btn.selected,
+        .test-count-btn.selected {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        #settings-display-modal,
+        #settings-gift-modal,
+        #settings-font-modal,
+        #settings-upcoming-modal {
+            display: none;
+        }
+
+        #settings-display-modal.active,
+        #settings-gift-modal.active,
+        #settings-font-modal.active,
+        #settings-upcoming-modal.active {
+            display: flex !important;
+        }
+
+        /* #grid-container styles moved inline or handled by JS for layout */
+
+        .room-panel {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+
+
+        .room-header {
+            padding: 5px;
+            background: #eee;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+
+
+
+
+        .room-header input {
+            width: 70px;
+            padding: 2px;
+        }
+
+        .room-id-input {
+            width: 90px !important;
+        }
+
+        .room-header button {
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        .set-points-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+
+        .set-points-btn:hover {
+            background: #1976D2;
+        }
+
+        .status-bar {
+            padding: 2px 5px;
+            font-size: 0.8em;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status-bar span.status-connected {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-bar span.status-connecting {
+            color: orange;
+        }
+
+        .status-bar span.status-disconnected {
+            color: red;
+        }
+
+        .high-value-gifts {
+            background: #fff5e6;
+            border-bottom: 1px solid #ddd;
+            padding: 3px 5px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            overflow-y: auto;
+            gap: 2px;
+            height: 70px;
+            align-content: flex-start;
+        }
+
+        .high-value-gift-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 5px;
+            background: white;
+            border: 1px solid #ffa500;
+            border-radius: 3px;
+            font-size: 0.8em;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .hv-gift-icon {
+            width: 25px;
+            height: 25px;
+        }
+
+        .hv-count {
+            color: #d00;
+            font-weight: bold;
+        }
+
+        .ranking-container {
+            height: 120px;
+            /* Fixed height for Top 5 */
+            background: #fff8f8;
+            border-bottom: 1px solid #ddd;
+            padding: 5px;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 2px;
+            background: white;
+            border: 1px solid #eee;
+            margin-bottom: 2px;
+            height: 20px;
+            font-size: 0.85em;
+            position: absolute;
+            /* For smooth sorting animation */
+            width: calc(100% - 10px);
+            transition: top 0.5s ease;
+            will-change: top;
+        }
+
+        .ranking-item.jump {
+            animation: jumpAnimation 0.5s ease;
+        }
+
+        @keyframes jumpAnimation {
+            0% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-5px);
+            }
+
+            50% {
+                transform: translateY(0);
+            }
+
+            70% {
+                transform: translateY(-2px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .ranking-rank {
+            width: 20px;
+            text-align: center;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .ranking-avatar {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .ranking-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ranking-points {
+            font-weight: bold;
+            color: #d00;
+        }
+
+        .gift-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px;
+            background: #fcfcfc;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 5px;
+            align-content: start;
+        }
+
+        .gift-log-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            padding: 8px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            aspect-ratio: 1;
+        }
+
+        .gift-log-item.gift-jump {
+            animation: giftJumpAnimation 0.4s ease-out 3;
+        }
+
+        @keyframes giftJumpAnimation {
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideToTotal {
+            0% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(150px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes slideInLeft {
+            0% {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-in-new {
+            animation: slideInLeft 0.3s ease-out forwards;
+        }
+
+        @keyframes impactPulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+                color: #4CAF50;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pending-slide {
+            animation: slideToTotal 0.6s ease-out forwards;
+        }
+
+        .total-impact {
+            animation: impactPulse 0.4s ease-out;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="global-header">
+        <strong>Multi-Room Monitor</strong>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <span>Auto Reconnect (sec):</span>
+            <input type="number" id="global-reconnect-interval" value="5" style="width: 50px;">
+            <button id="settings-display-btn"
+                style="padding:5px 15px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">設定1</button>
+            <button id="settings-gift-btn"
+                style="padding:5px 15px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer;">設定2</button>
+            <button id="settings-font-btn"
+                style="padding:5px 15px; background:#FF9800; color:white; border:none; border-radius:4px; cursor:pointer;">設定3</button>
+            <button id="settings-upcoming-btn"
+                style="padding:5px 15px; background:#9C27B0; color:white; border:none; border-radius:4px; cursor:pointer;">アップカミング設定</button>
+        </div>
+    </div>
+
+    <!-- Setting 1: Display Settings -->
+    <div id="settings-display-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:white; padding:20px; border-radius:8px; max-width:400px; width:90%;">
+            <h3 style="margin-top:0;">設定1 (表示・ウィンドウ)</h3>
+
+            <div style="margin-bottom:20px;">
+                <h4 style="margin:10px 0 5px 0;">ウィンドウ数</h4>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button class="window-count-btn" data-count="2">最左・左右 (2窓)</button>
+                    <button class="window-count-btn" data-count="3">最左・左右真ん中 (3窓)</button>
+                    <button class="window-count-btn" data-count="4">最左・左右２段 (4窓)</button>
+                    <button class="window-count-btn" data-count="5">最左・上段３・下段２ (5窓)</button>
+                    <button class="window-count-btn" data-count="6">最左・３×２ (6窓)</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <h4 style="margin:10px 0 5px 0;">ステータスバー文字サイズ</h4>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label>サイズ:</label>
+                    <select id="font-size-selector" style="flex:1; padding:5px;">
+                        <option value="0.7">小 (0.7em)</option>
+                        <option value="0.8" selected>標準 (0.8em)</option>
+                        <option value="0.9">中 (0.9em)</option>
+                        <option value="1.0">大 (1.0em)</option>
+                        <option value="1.2">特大 (1.2em)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="close-display-settings"
+                style="margin-top:15px; padding:8px 20px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Setting 2: Gift Test Settings -->
+    <div id="settings-gift-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:white; padding:20px; border-radius:8px; max-width:400px; width:90%;">
+            <h3 style="margin-top:0;">設定2 (ギフトテスト)</h3>
+
+            <div style="margin-bottom:20px;">
+                <h4 style="margin:10px 0 5px 0;">ギフトテスト</h4>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.9em; font-weight:bold;">テストユーザー:</label>
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:5px;">
+                        <button class="test-user-btn" data-user-id="1001" data-user-name="テストA">A</button>
+                        <button class="test-user-btn" data-user-id="1002" data-user-name="テストB">B</button>
+                        <button class="test-user-btn" data-user-id="1003" data-user-name="テストC">C</button>
+                        <button class="test-user-btn" data-user-id="1004" data-user-name="テストD">D</button>
+                        <button class="test-user-btn" data-user-id="1005" data-user-name="テストE">E</button>
+                        <button class="test-user-btn" data-user-id="1006" data-user-name="テストF">F</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.9em; font-weight:bold;">個数:</label>
+                    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px;">
+                        <button class="test-count-btn" data-count="1">1</button>
+                        <button class="test-count-btn" data-count="2">2</button>
+                        <button class="test-count-btn" data-count="3">3</button>
+                        <button class="test-count-btn" data-count="4">4</button>
+                        <button class="test-count-btn" data-count="5">5</button>
+                        <button class="test-count-btn" data-count="10">10</button>
+                        <button class="test-count-btn" data-count="100">100</button>
+                        <button class="test-count-btn" data-count="1000">1000</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.9em; font-weight:bold;">対象ウィンドウ:</label>
+                    <select id="test-window-selector" style="width:100%; padding:5px; margin-top:5px;">
+                        <option value="0">Window 1</option>
+                        <option value="1">Window 2</option>
+                        <option value="2">Window 3</option>
+                        <option value="3">Window 4</option>
+                        <option value="4">Window 5</option>
+                        <option value="5">Window 6</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size:0.9em; font-weight:bold;">ギフト:</label>
+                    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:5px;">
+                        <img src="https://static.showroom-live.com/image/gift/3000421_s.png?v=7" class="test-gift-icon"
+                            data-id="3000421" data-type="2" title="星"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/3000844_s.png?v=7" class="test-gift-icon"
+                            data-id="3000844" data-type="2" title="無料"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/3_s.png?v=7" class="test-gift-icon"
+                            data-id="3" data-type="1" title="有料(3)"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/800003_s.png?v=7" class="test-gift-icon"
+                            data-id="800003" data-type="1" title="有料(800003)"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/21_s.png?v=7" class="test-gift-icon"
+                            data-id="21" data-type="1" title="有料(21)"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/1601_s.png?v=7" class="test-gift-icon"
+                            data-id="1601" data-type="2" title="1601"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                        <img src="https://static.showroom-live.com/image/gift/3000752_s.png?v=7" class="test-gift-icon"
+                            data-id="3000752" data-type="2" title="無料"
+                            style="width:30px;height:30px;cursor:pointer;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                </div>
+            </div>
+
+            <button id="close-gift-settings"
+                style="margin-top:15px; padding:8px 20px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Setting 3: Font Size Settings -->
+    <div id="settings-font-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:white; padding:20px; border-radius:8px; max-width:400px; width:90%;">
+            <h3 style="margin-top:0;">設定3 (文字サイズ)</h3>
+
+            <div style="margin-bottom:20px;">
+                <h4 style="margin:10px 0 5px 0;">ランキング文字サイズ</h4>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>合計ポイント:</label>
+                        <select id="font-points-selector" style="padding:5px; width:120px;">
+                            <option value="0.9em">小 (0.9em)</option>
+                            <option value="1.0em">標準 (1.0em)</option>
+                            <option value="1.1em" selected>大 (1.1em)</option>
+                            <option value="1.2em">特大 (1.2em)</option>
+                            <option value="1.3em">最大 (1.3em)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>ポイント差:</label>
+                        <select id="font-diff-selector" style="padding:5px; width:120px;">
+                            <option value="0.8em">小 (0.8em)</option>
+                            <option value="0.9em">標準 (0.9em)</option>
+                            <option value="1.0em" selected>大 (1.0em)</option>
+                            <option value="1.1em">特大 (1.1em)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>瞬間/予測:</label>
+                        <select id="font-instant-selector" style="padding:5px; width:120px;">
+                            <option value="0.7em">小 (0.7em)</option>
+                            <option value="0.8em">標準 (0.8em)</option>
+                            <option value="0.9em" selected>大 (0.9em)</option>
+                            <option value="1.0em">特大 (1.0em)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button id="close-font-settings"
+                style="margin-top:15px; padding:8px 20px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Setting 4: Upcoming Mode settings -->
+    <div id="settings-upcoming-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:white; padding:20px; border-radius:8px; max-width:400px; width:90%;">
+            <h3 style="margin-top:0;">アップカミング設定</h3>
+
+            <div style="margin-bottom:20px;">
+                <h4 style="margin:10px 0 5px 0;">モード設定</h4>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" id="upcoming-mode-toggle" style="transform:scale(1.5);">
+                    <label for="upcoming-mode-toggle" style="font-weight:bold;">アップカミングモード (ON)</label>
+                </div>
+                <p style="font-size:0.85em; color:#666; margin-top:5px;">
+                    ONにすると、以下のギフトのみ集計・表示します:<br>
+                    ・有料ギフト (全て)<br>
+                    ・指定無料ギフト (1601, 3000751, 3000752)
+                </p>
+            </div>
+
+            <button id="close-upcoming-settings"
+                style="margin-top:15px; padding:8px 20px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Generic Info Modal -->
+    <div id="info-modal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+        <div
+            style="background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; max-height:80vh; display:flex; flex-direction:column;">
+            <h3 id="info-modal-title" style="margin-top:0; border-bottom:1px solid #ddd; padding-bottom:10px;">Title
+            </h3>
+            <div id="info-modal-content" style="overflow-y:auto; flex:1; padding:10px 0;">
+                <!-- Content will be injected here -->
+            </div>
+            <button id="close-info-modal"
+                style="margin-top:15px; padding:8px 20px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Additional Styles for Info Modal Content -->
+    <style>
+        .info-list-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .info-icon {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+        }
+
+        .info-name {
+            flex: 1;
+            font-weight: bold;
+        }
+
+        .info-count {
+            color: #d00;
+            font-weight: bold;
+        }
+    </style>
+
+    <div id="layout-wrapper" style="display:flex; flex:1; overflow:hidden;">
+        <div id="sidebar-ranking"
+            style="width:380px; background:white; border-right:1px solid #ccc; display:flex; flex-direction:column; padding:5px; flex-shrink:0;">
+            <h4 style="margin:5px 0 10px 0; text-align:center;">ルームランキング</h4>
+
+            <!-- Event End Time Setting -->
+            <div
+                style="padding:5px; text-align:center; border-bottom:1px solid #ccc; background:#fafafa; margin-bottom:5px;">
+                <div style="font-size:0.85em; margin-bottom:3px;">イベント終了設定 (停止)</div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:5px;">
+                    <input type="time" id="event-end-input" step="1" style="padding:2px; font-size:0.9em; width:80px;">
+                    <button id="event-end-set-btn"
+                        style="padding:2px 8px; font-size:0.85em; cursor:pointer; background:#eee; border:1px solid #ccc; border-radius:3px;">Set</button>
+                    <div id="current-clock" style="font-weight:bold; font-size:1.1em; color:#333; margin-left:5px;">
+                        --:--:--</div>
+                </div>
+                <div id="event-end-display"
+                    style="font-size:0.85em; color:#d00; font-weight:bold; margin-top:2px; min-height:1.2em;"></div>
+            </div>
+
+            <div id="sidebar-report-area"
+                style="padding:10px; background:#f0f0f0; border-bottom:1px solid #ccc; font-weight:bold; color:#555; text-align:center; font-size:0.9em; margin-bottom:5px;">
+                状況監視中...</div>
+            <div style="flex:1; overflow-y:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+                    <tbody id="ranking-table-body">
+                        <!-- Rows generated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Feature: External Campaign Ranking (Visible when Setting 4 ON) -->
+            <div id="external-ranking-container"
+                style="display:none; border-top:2px solid #333; margin-top:5px; padding-top:5px; height: 30%; overflow-y: auto; background:#fff8e1;">
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.9em; margin-bottom:5px; background:#FFD700; padding:2px 5px;">
+                    <span>Award Ranking</span>
+                    <span id="external-ranking-time" style="font-size:0.8em; color:#666;">--:--:--</span>
+                    <button id="external-ranking-reload-btn"
+                        style="padding:2px 6px; font-size:0.8em; background:#FF9800; color:white; border:none; border-radius:3px; cursor:pointer;">
+                        🔄
+                    </button>
+                </div>
+                <div id="external-ranking-list"></div>
+            </div>
+        </div>
+        <div id="grid-container" style="display:grid; flex:1; overflow:hidden; gap:5px; padding:5px;">
+            <!-- Room Panels will be generated by JS -->
+        </div>
+    </div>
+
+    <script src="js/global_ranking.js"></script>
+    <script src="js/multi_room.js"></script>
+</body>
+
+</html>
