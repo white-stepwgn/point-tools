@@ -1,0 +1,115 @@
+/* --- ベース --- */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background: #f0f0f0;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #ddd;
+    padding: 5px 10px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+input {
+    padding: 3px;
+    font-size: 1em;
+    width: 100px;
+}
+
+button {
+    padding: 3px 8px;
+    font-size: 1em;
+}
+
+.container {
+    display: flex;
+    gap: 10px;
+    margin-top: 60px;
+    padding: 10px;
+}
+
+/* --- 各カラム --- */
+.column {
+    flex: 1;
+    border: 1px solid #ccc;
+    background: #fff;
+    padding: 5px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* カラムヘッダー */
+.column h2 {
+    text-align: center;
+    margin: 5px 0;
+    font-size: 1.2em;
+}
+
+/* --- コメント --- */
+#comment div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#comment img {
+    width: 40px;
+    height: 40px;
+    margin-right: 5px;
+}
+
+/* --- ギフト --- */
+.giftItem {
+    display: flex;
+    align-items: center;
+    background: #f9f9f9;
+    padding: 2px 5px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    box-shadow: 1px 1px 3px #aaa;
+}
+
+.giftItem img {
+    width: 40px;
+    height: 40px;
+    margin-right: 5px;
+}
+
+/* --- 設定パネル --- */
+#settingsPanel {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: 40px;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px;
+    z-index: 200;
+    font-size: 0.9em;
+}
+
+#settingsPanel div {
+    margin-bottom: 5px;
+}
+
+/* --- ステータス表示色 --- */
+#statusSpan.connecting {
+    color: blue;
+}
+
+#statusSpan.connected {
+    color: green;
+}
+
+#statusSpan.disconnected {
+    color: red;
+}
