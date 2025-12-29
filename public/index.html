@@ -2416,16 +2416,19 @@
             const userSpan = document.getElementById("commentHistoryUser");
             const listDiv = document.getElementById("commentHistoryList");
 
-            // 位置を初期化(中央)
-            modal.style.left = "50%";
-            modal.style.top = "50%";
-            modal.style.transform = "translate(-50%, -50%)";
+            // すでに表示されている場合は位置リセットしない
+            if (!modal.classList.contains("show")) {
+                // 位置を初期化(中央)
+                modal.style.left = "50%";
+                modal.style.top = "50%";
+                modal.style.transform = "translate(-50%, -50%)";
 
-            // ドラッグ位置もリセット
-            modal.dataset.x = 0;
-            modal.dataset.y = 0;
-            // ドラッグ内部状態をリセットするためのイベント発火
-            window.dispatchEvent(new CustomEvent('resetDragState'));
+                // ドラッグ位置もリセット
+                modal.dataset.x = 0;
+                modal.dataset.y = 0;
+                // ドラッグ内部状態をリセットするためのイベント発火
+                window.dispatchEvent(new CustomEvent('resetDragState'));
+            }
 
             // アバター付きでユーザー名を表示
             if (avatarId) {
@@ -2493,16 +2496,22 @@
 
 
 
-            // 位置を初期化(中央)
-            modal.style.left = "50%";
-            modal.style.top = "50%";
-            modal.style.transform = "translate(-50%, -50%)";
+            // 現在表示中のIDを保存（リアルタイム更新用）
+            modal.setAttribute("data-user-id", userId);
 
-            // ドラッグ位置もリセット
-            modal.dataset.x = 0;
-            modal.dataset.y = 0;
-            // ドラッグ内部状態をリセットするためのイベント発火
-            window.dispatchEvent(new CustomEvent('resetDragState'));
+            // すでに表示されている場合は位置リセットしない
+            if (!modal.classList.contains("show")) {
+                // 位置を初期化(中央)
+                modal.style.left = "50%";
+                modal.style.top = "50%";
+                modal.style.transform = "translate(-50%, -50%)";
+
+                // ドラッグ位置もリセット
+                modal.dataset.x = 0;
+                modal.dataset.y = 0;
+                // ドラッグ内部状態をリセットするためのイベント発火
+                window.dispatchEvent(new CustomEvent('resetDragState'));
+            }
 
             userSpan.textContent = userName;
             listDiv.innerHTML = "";
