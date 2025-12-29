@@ -17,55 +17,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Debug Logger
-app.use((req, res, next) => {
-    console.log(`[Request] ${req.method} ${req.url}`);
-    next();
-});
-
-// JSONボディのパースを有効化
-app.use(express.json());
-
-// Cloudflare Proxy Endpoint
-app.all('/api/proxy_cf', async (req, res) => {
-    const targetUrl = req.query.url || req.body.url;
-
-    if (!targetUrl) {
-        return res.status(400).json({ error: 'Missing target URL' });
-    }
-
-    try {
-        const method = req.method;
-        const headers = { 'Content-Type': 'application/json' };
-
-        let options = { method, headers };
-
-        if (method === 'POST' || method === 'PUT') {
-            const body = { ...req.body };
-            delete body.url;
-            options.body = JSON.stringify(body);
-        }
-
-        const cfRes = await fetch(targetUrl, options);
-
-        const contentType = cfRes.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const data = await cfRes.json();
-            res.status(cfRes.status).json(data);
-        } else {
-            const text = await cfRes.text();
-            if (text.trim().startsWith('<')) {
-                console.log('[Proxy] HTML Response (Access blocked?):', text.substring(0, 200));
-            }
-            res.status(cfRes.status).send(text);
-        }
-
-    } catch (e) {
-        console.error('Proxy Error:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
 // -------------------------------
 // public フォルダ配信
 // -------------------------------
@@ -157,9 +108,6 @@ app.get("/room_profile", async (req, res) => {
         if (profileJson.room_name) {
             responseData.room_name = profileJson.room_name;
         }
-        if (profileJson.event) {
-            responseData.event = profileJson.event;
-        }
 
         // Also fetch broadcast_key from live_info API
         try {
@@ -185,30 +133,6 @@ app.get("/room_profile", async (req, res) => {
     }
 });
 
-// ===============================
-// ④ ルームURLキーからルームID取得 API (/room_id_by_key)
-// ===============================
-app.get("/room_id_by_key", async (req, res) => {
-    const key = req.query.key;
-    if (!key) return res.status(400).json({ error: "key required" });
-
-    try {
-        const url = `https://www.showroom-live.com/api/room/status?room_url_key=${key}`;
-        const r = await fetch(url);
-        const json = await r.json();
-
-        if (json.room_id) {
-            res.json({ room_id: json.room_id });
-        } else {
-            res.status(404).json({ error: "Room ID not found" });
-        }
-    } catch (e) {
-        res.status(500).json({ error: e.toString() });
-    }
-});
-
-
-
 app.get("/gift_list", async (req, res) => {
     const roomId = (req.query.room_id || "").trim();
     if (!roomId) return res.status(400).json({ error: "room_id required" });
@@ -229,30 +153,6 @@ app.get("/gift_list", async (req, res) => {
 // ===============================
 // Event Points Proxy
 // ===============================
-// Python Room Event Scraper Endpoint
-app.get("/api/room_event_py", async (req, res) => {
-    const roomId = req.query.room_id;
-    if (!roomId) return res.status(400).json({ error: "room_id required" });
-
-    const { exec } = require('child_process');
-    const path = require('path');
-    const scriptPath = path.join(__dirname, 'scrape_room_event.py');
-
-    exec(`python "${scriptPath}" "${roomId}"`, { encoding: 'utf8' }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`[Proxy] Python exec error: ${error.message}`);
-            return res.status(500).json({ error: "Python exec failed" });
-        }
-        try {
-            const result = JSON.parse(stdout);
-            res.json(result);
-        } catch (e) {
-            console.error(`[Proxy] Python Parse Error: ${e.message}`);
-            res.status(500).json({ error: "Python output parse failed" });
-        }
-    });
-});
-
 app.get("/api/event_points", async (req, res) => {
     const roomId = req.query.room_id;
     if (!roomId) return res.status(400).json({ error: "room_id required" });
@@ -265,143 +165,6 @@ app.get("/api/event_points", async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "Failed to fetch event data" });
-    }
-});
-
-// ===============================
-// Live Polling Proxy (Viewer Count)
-// ===============================
-// Python Scraper Endpoint
-app.get("/api/event_ranking_py", async (req, res) => {
-    const urlKey = req.query.url_key;
-    if (!urlKey) return res.status(400).json({ error: "url_key required" });
-
-    console.log(`[Proxy] Executing Python scraper for: ${urlKey}`);
-    const { exec } = require('child_process');
-    const path = require('path');
-    const scriptPath = path.join(__dirname, 'scrape_ranking.py');
-
-    exec(`python "${scriptPath}" "${urlKey}"`, { encoding: 'utf8' }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`[Proxy] Python exec error: ${error.message}`);
-            return res.status(500).json({ error: "Python exec failed" });
-        }
-        try {
-            const result = JSON.parse(stdout);
-            // Python script returns { ranking: [...] } or { error: ... }
-            res.json(result);
-        } catch (e) {
-            console.error(`[Proxy] Python Parse Error: ${e.message}`);
-            res.status(500).json({ error: "Python output parse failed" });
-        }
-    });
-});
-
-app.get("/api/live_polling", async (req, res) => {
-    const roomId = req.query.room_id;
-    if (!roomId) return res.status(400).json({ error: "room_id required" });
-
-    try {
-        const url = `https://www.showroom-live.com/api/live/polling?room_id=${roomId}`;
-        const r = await fetch(url);
-
-        if (!r.ok) {
-            console.error(`[Proxy] live_polling fetch error: ${r.status}`);
-            return res.status(r.status).json({ error: `Upstream error ${r.status}` });
-        }
-
-        const json = await r.json();
-        res.json(json);
-    } catch (e) {
-        console.error("[Proxy] live_polling error:", e);
-        res.status(500).json({ error: "Failed to fetch polling data" });
-    }
-});
-
-// ===============================
-// Feature: Event Ranking Proxy
-// ===============================
-app.get("/api/event_ranking", async (req, res) => {
-    const eventId = req.query.event_id;
-    const urlKey = req.query.url_key; // Added for scraping fallback
-
-    if (!eventId) return res.status(400).json({ error: "event_id required" });
-
-    try {
-        const url = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}`;
-        console.log(`[Proxy] Fetching event ranking: ${url}`);
-        const r = await fetch(url);
-
-        if (!r.ok) {
-            console.error(`[Proxy] event_ranking fetch error: ${r.status}`);
-
-            // Fallback: Scrape Web Page if API fails (404) and url_key is available
-            if (r.status === 404 && urlKey) {
-                console.log(`[Proxy] Attempting scrape fallback for: ${urlKey}`);
-                const pageUrl = `https://www.showroom-live.com/event/${urlKey}`;
-                const pageRes = await fetch(pageUrl);
-                if (!pageRes.ok) {
-                    return res.status(r.status).json({ error: `Upstream error ${r.status} & Scrape failed` });
-                }
-                const html = await pageRes.text();
-
-                // Simple Regex Scraping based on user provided HTML
-                const ranking = [];
-                // Find all list items
-                // This is rough parsing, assuming standard layout
-                // Regex to capture: rank, room_id, name. Point is likely missing.
-
-                // Pattern: <li ... is-rank-(\d+) ... data-room-id="(\d+)" ... listcardinfo-main-text ...>NAME</h4>
-                // Since HTML is nested, we might need a global match or split by <li>
-
-                // Split by "contentlist-row" to isolate items
-                const items = html.split('class="contentlist-row"');
-                items.shift(); // Remove content before first item
-
-                items.forEach(item => {
-                    const rankMatch = item.match(/is-rank-(\d+)/);
-                    const idMatch = item.match(/data-room-id="(\d+)"/);
-
-                    // Name from h4 OR img alt
-                    let nameMatch = item.match(/listcardinfo-main-text[^>]*>([\s\S]*?)<\//);
-                    let roomName = nameMatch ? nameMatch[1].trim() : '';
-
-                    if (!roomName) {
-                        const altMatch = item.match(/img-main"[^>]*alt="([^"]+)"/);
-                        if (altMatch) roomName = altMatch[1];
-                    }
-
-                    // URL key from href (e.g. /r/username)
-                    const urlMatch = item.match(/href="\/r\/([^"]+)"/);
-                    const urlKey = urlMatch ? urlMatch[1] : '';
-
-                    if (rankMatch && idMatch && roomName) {
-                        ranking.push({
-                            rank: parseInt(rankMatch[1]),
-                            point: 0,
-                            room: {
-                                room_id: parseInt(idMatch[1]),
-                                room_name: roomName,
-                                url_key: urlKey
-                            }
-                        });
-                    }
-                });
-
-                if (ranking.length > 0) {
-                    console.log(`[Proxy] Scraped ${ranking.length} items.`);
-                    return res.json({ ranking: ranking });
-                }
-            }
-
-            return res.status(r.status).json({ error: `Upstream error ${r.status}` });
-        }
-
-        const json = await r.json();
-        res.json(json);
-    } catch (e) {
-        console.error("[Proxy] event_ranking error:", e);
-        res.status(500).json({ error: "Failed to fetch event ranking" });
     }
 });
 

@@ -29,6 +29,191 @@ let entrySlots = []; // Array of { windowIndex, roomId, roomName, url }
 let previousRankingData = []; // Store previous ranking for comparison
 let lastExternalRankingUpdate = null; // Timestamp of last update
 
+// User Identity Accumulation for Cloudflare
+const userIdentityMap = new Map(); // uid -> { name, last_seen }
+// Default URL set as requested
+let cfWorkerUrl = localStorage.getItem('cf_worker_url') || 'https://userid-names.geten777.workers.dev';
+let cfSendInterval = parseInt(localStorage.getItem('cf_send_interval')) || 30;
+let cfIntervalTimer = null;
+let lastStatusMessage = '';
+
+function accumulateUserIdentity(uid, name) {
+    if (!uid || !name) return;
+    // Overwrite with latest name and time
+    userIdentityMap.set(String(uid), { name: name, last_seen: Date.now() });
+    updateCfStatusDisplay();
+}
+
+function updateCfStatusDisplay() {
+    const statusEl = document.getElementById('cfStatus');
+    if (!statusEl) return;
+
+    const count = userIdentityMap.size;
+    let statusText = '';
+
+    if (cfIntervalTimer !== null) {
+        let timeStr = nextSendTime ? nextSendTime.toLocaleTimeString() : '不明';
+        statusText = `<span style="color:green; font-weight:bold;">[稼働中]</span> 次回: ${timeStr}`;
+    } else {
+        statusText = `<span style="color:red; font-weight:bold;">[停止中]</span>`;
+    }
+
+    let extra = lastStatusMessage ? ` <span style="margin-left:5px; padding-left:5px; border-left:1px solid #ccc;">${lastStatusMessage}</span>` : '';
+    statusEl.innerHTML = `${statusText} (待機: ${count}件)${extra}`;
+}
+
+let nextSendTime = null;
+
+async function sendToCloudflare() {
+    if (!cfWorkerUrl) return;
+
+    // Create payload
+    const payload = Array.from(userIdentityMap.entries()).map(([uid, data]) => ({
+        uid: uid,
+        name: data.name,
+        last_seen: data.last_seen
+    }));
+
+    if (payload.length === 0) {
+        lastStatusMessage = `<span style="color:#aaa;">送信対象なし</span>`;
+        updateCfStatusDisplay();
+        if (cfIntervalTimer) scheduleNextSend();
+        return;
+    }
+
+    console.log(`[Cloudflare] Sending ${payload.length} users...`);
+    lastStatusMessage = `<span style="color:orange;">送信中... (${payload.length}件)</span>`;
+    updateCfStatusDisplay();
+
+    try {
+        const res = await fetch('/api/proxy_cf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: cfWorkerUrl, // Proxy logic
+                action: 'save_users',
+                users: payload
+            })
+        });
+
+        const now = new Date();
+        const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+        if (res.ok) {
+            console.log(`[Cloudflare] Sent successfully.`);
+            userIdentityMap.clear();
+            lastStatusMessage = `<span style="color:blue; font-weight:bold;">送信成功 (${payload.length}件 ${timeStr})</span>`;
+            if (cfIntervalTimer) scheduleNextSend();
+            updateCfStatusDisplay();
+        } else {
+            console.error(`[Cloudflare] Send failed: ${res.status}`);
+            lastStatusMessage = `<span style="color:red;">送信失敗 (${res.status})</span>`;
+            if (cfIntervalTimer) scheduleNextSend();
+            updateCfStatusDisplay();
+        }
+    } catch (e) {
+        console.error('[Cloudflare] Send Error:', e);
+        lastStatusMessage = `<span style="color:red;">送信エラー: ${e.message}</span>`;
+        if (cfIntervalTimer) scheduleNextSend();
+        updateCfStatusDisplay();
+    }
+}
+
+function scheduleNextSend() {
+    if (cfSendInterval > 0) {
+        nextSendTime = new Date(Date.now() + cfSendInterval * 60 * 1000);
+    }
+}
+
+function startCfTimer() {
+    if (cfIntervalTimer) clearInterval(cfIntervalTimer);
+
+    // Debug log
+    console.log(`[Cloudflare] startCfTimer called. URL: ${cfWorkerUrl}, Interval: ${cfSendInterval}`);
+    alert(`Debug: URL=${cfWorkerUrl}, Interval=${cfSendInterval}`); // Confirm values
+
+    if (cfWorkerUrl && cfSendInterval > 0) {
+        console.log(`[Cloudflare] Starting timer...`);
+
+        // Initial schedule
+        scheduleNextSend();
+
+        cfIntervalTimer = setInterval(() => {
+            sendToCloudflare();
+            // Timer continuous, so update next time
+            scheduleNextSend();
+        }, cfSendInterval * 60 * 1000);
+
+        console.log(`[Cloudflare] Timer ID: ${cfIntervalTimer}`);
+        updateCfStatusDisplay();
+
+    } else {
+        console.warn(`[Cloudflare] Timer NOT started. Missing URL or invalid interval.`);
+        nextSendTime = null;
+        cfIntervalTimer = null;
+        updateCfStatusDisplay();
+    }
+}
+
+async function fetchPastNames(uid) {
+    if (!cfWorkerUrl) return;
+
+    const listDiv = document.getElementById('past-names-list');
+    listDiv.innerHTML = '読み込み中...';
+
+    try {
+        const targetUrl = `${cfWorkerUrl}?action=get_names&uid=${uid}`;
+        const url = `/api/proxy_cf?url=${encodeURIComponent(targetUrl)}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        // Expected data: { uid: "...", names: [ { name: "...", last_seen: ... }, ... ] } or just array of strings
+
+        listDiv.innerHTML = '';
+
+        let names = [];
+        if (Array.isArray(data)) names = data;
+        else if (data.names) names = data.names;
+
+        if (names.length === 0) {
+            listDiv.innerHTML = '履歴なし';
+            return;
+        }
+
+        // Sort by time desc if available, or just list
+        // Assuming names is array of objects { name, last_seen } or strings
+        names.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'past-name-item';
+
+            let nameStr = '';
+            let dateStr = '';
+
+            if (typeof item === 'string') {
+                nameStr = item;
+            } else {
+                nameStr = item.name;
+                if (item.last_seen) {
+                    const d = new Date(item.last_seen);
+                    dateStr = d.toLocaleString();
+                }
+            }
+
+            div.innerHTML = `
+                <span style="font-weight:bold;">${nameStr}</span>
+                ${dateStr ? `<span style="font-size:0.8em; color:#999; margin-left:10px;">${dateStr}</span>` : ''}
+            `;
+            listDiv.appendChild(div);
+        });
+
+    } catch (e) {
+        console.error(e);
+        listDiv.innerHTML = `取得失敗: ${e.message}`;
+    }
+}
+
 // RoomMonitor Class
 class RoomMonitor {
     constructor(index, container) {
@@ -112,45 +297,7 @@ class RoomMonitor {
             this.ui.roomIdInput.focus();
         });
 
-        this.ui.connectBtn.addEventListener('click', async () => {
-            if (this.connected) {
-                this.disconnect();
-                return;
-            }
-
-            let inputVal = this.ui.roomIdInput.value.trim();
-
-            // Allow URL conversion
-            if (inputVal.startsWith('http')) {
-                try {
-                    this.updateStatus('connecting', 'Converting URL...');
-                    const res = await fetch(`/convert_url?url=${encodeURIComponent(inputVal)}`);
-                    const json = await res.json();
-                    if (json.room_id) {
-                        inputVal = json.room_id;
-                        this.ui.roomIdInput.value = inputVal; // Update input with ID
-                    } else {
-                        alert('Could not extract Room ID from URL');
-                        this.updateStatus('disconnected', 'Invalid URL');
-                        return;
-                    }
-                } catch (e) {
-                    console.error("URL conversion error:", e);
-                    alert('Conversion error. Please check the URL.');
-                    this.updateStatus('disconnected', 'Conversion Failed');
-                    return;
-                }
-            }
-
-            const rid = parseInt(inputVal);
-            if (!isNaN(rid) && rid > 0) {
-                this.roomId = rid;
-                this.initialPoints = parseInt(this.ui.initPointsInput.value) || 0;
-                this.connect();
-            } else {
-                alert('Please enter a valid Room ID or Showroom URL.');
-            }
-        });
+        this.ui.connectBtn.addEventListener('click', () => this.toggleConnection());
 
         this.ui.setPointsBtn.onclick = () => this.setInitialPoints();
         this.ui.resetPointsBtn.onclick = () => {
@@ -195,46 +342,69 @@ class RoomMonitor {
         }
     }
 
-    toggleConnection() {
+    async toggleConnection() {
         if (this.connected) {
             this.disconnect();
-        } else {
-            const rid = this.ui.roomIdInput.value.trim();
-            if (!rid) return;
+            return;
+        }
+
+        let inputVal = this.ui.roomIdInput.value.trim();
+        if (!inputVal) return;
+
+        // Allow URL conversion
+        if (inputVal.startsWith('http')) {
+            try {
+                this.updateStatus('connecting', 'Converting URL...');
+                const res = await fetch(`/convert_url?url=${encodeURIComponent(inputVal)}`);
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                const json = await res.json();
+                if (json.room_id) {
+                    inputVal = json.room_id;
+                    this.ui.roomIdInput.value = inputVal; // Update input with ID
+                } else {
+                    alert('Could not extract Room ID from URL');
+                    this.updateStatus('disconnected', 'Invalid URL');
+                    return;
+                }
+            } catch (e) {
+                console.error("URL conversion error:", e);
+                alert('Conversion error. Please check the URL.');
+                this.updateStatus('disconnected', 'Conversion Failed');
+                return;
+            }
+        }
+
+        const rid = inputVal; // Keep as string for now, but ensure it's the ID
+        if (rid) {
             this.roomId = rid;
             this.initialPoints = parseInt(this.ui.initPointsInput.value) || 0;
             this.connect();
+        } else {
+            alert('Please enter a valid Room ID or Showroom URL.');
         }
     }
 
-    async setInitialPoints() {
-        // Try to fetch from Event API first
-        if (this.roomId) {
-            try {
-                this.updateStatus('connecting', 'Fetching Event Points...');
-                const res = await fetch(`/api/event_points?room_id=${this.roomId}`);
-                const json = await res.json();
-
-                // Navigate json: event -> ranking -> point
-                let foundPoint = null;
-                if (json.event && json.event.ranking && json.event.ranking.point !== undefined) {
-                    foundPoint = json.event.ranking.point;
-                } else if (json.point !== undefined) {
-                    // Fallback if structure is flat
-                    foundPoint = json.point;
-                }
-
-                if (foundPoint !== null) {
-                    this.ui.initPointsInput.value = foundPoint;
-                    console.log(`[Room ${this.roomId}] Event Points Fetched: ${foundPoint}`);
-                } else {
-                    console.log(`[Room ${this.roomId}] No event points found.`);
-                }
-                this.updateStatus('connected', 'ONLINE (Proxy)');
-            } catch (e) {
-                console.warn(`[Room ${this.roomId}] Event fetch failed:`, e);
-                this.updateStatus('connected', 'ONLINE (Proxy)'); // Revert status
+    async setInitialPoints(passedPoints) {
+        // 1. If points are passed directly (e.g. from ENTRY button)
+        if (passedPoints !== undefined && passedPoints !== null) {
+            this.ui.initPointsInput.value = passedPoints;
+            console.log(`[Room ${this.roomId}] Points set from argument: ${passedPoints}`);
+        }
+        // 2. If in Upcoming Mode and no points passed, try Award Ranking data
+        else if (isUpcomingMode && this.roomId) {
+            // previousRankingData: [{ room_id, rank, points }, ...]
+            const rankingItem = previousRankingData.find(p => p.room_id == this.roomId);
+            if (rankingItem) {
+                this.ui.initPointsInput.value = rankingItem.points;
+                console.log(`[Room ${this.roomId}] Award Ranking Points found: ${rankingItem.points}`);
+            } else {
+                console.log(`[Room ${this.roomId}] Room not found in Award Ranking. Falling back to Event API.`);
+                await this.fetchEventPoints();
             }
+        }
+        // 3. Normal Mode or Fallback: Try to fetch from Event API
+        else if (this.roomId) {
+            await this.fetchEventPoints();
         }
 
         // Mark as set
@@ -245,6 +415,47 @@ class RoomMonitor {
         this.initialPoints = newInitPoints;
         this.updateTotalPoints();
         updateGlobalRanking();
+    }
+
+    async fetchEventPoints() {
+        if (!this.roomId) return;
+        try {
+            this.updateStatus('connecting', 'Fetching Event Points...');
+            const res = await fetch(`/api/event_points?room_id=${this.roomId}`);
+            const json = await res.json();
+
+            // Navigate json: event -> ranking -> point
+            let foundPoint = null;
+            if (json.event) {
+                this.currentEvent = json.event;
+                console.log(`[Room ${this.roomId}] Event Info:`, json.event);
+            }
+
+            if (json.event && json.event.ranking && json.event.ranking.point !== undefined) {
+                foundPoint = json.event.ranking.point;
+            } else if (json.point !== undefined) {
+                foundPoint = json.point;
+            }
+
+            if (foundPoint !== null) {
+                this.ui.initPointsInput.value = foundPoint;
+                console.log(`[Room ${this.roomId}] Event Points Fetched: ${foundPoint}`);
+
+                // Window 1 ならイベントランキング更新をトリガー
+                if (this === monitors[0]) {
+                    // 関数が定義されているか確認してから呼ぶ
+                    if (typeof updateEventRankingFromWindow1 === 'function') {
+                        updateEventRankingFromWindow1();
+                    }
+                }
+            } else {
+                console.log(`[Room ${this.roomId}] No event points found.`);
+            }
+            this.updateStatus('connected', 'ONLINE (Proxy)');
+        } catch (e) {
+            console.warn(`[Room ${this.roomId}] Event fetch failed:`, e);
+            this.updateStatus('connected', 'ONLINE (Proxy)'); // Revert status
+        }
     }
 
     async connect() {
@@ -384,6 +595,11 @@ class RoomMonitor {
 
                 const obj = JSON.parse(cleanJson);
 
+                // Accumulate user identity from any message dealing with users
+                if (obj.u && obj.ac) {
+                    accumulateUserIdentity(obj.u, obj.ac);
+                }
+
                 if (obj.g > 1000) {
                     if (obj.g) {
                         this.processGift(obj);
@@ -522,6 +738,9 @@ class RoomMonitor {
         // Update profile info
         user.name = name;
         user.avatar = avatar;
+
+        // Accumulate for Cloudflare
+        accumulateUserIdentity(uid, name);
 
         // Track gift history
         if (giftId) {
@@ -836,6 +1055,18 @@ class RoomMonitor {
         });
 
         modal.style.display = 'flex';
+
+        // Setup Past Names Section
+        const pastSection = document.getElementById('past-names-section');
+        pastSection.style.display = 'block';
+        document.getElementById('past-names-list').innerHTML = ''; // Clear previous
+
+        const fetchBtn = document.getElementById('fetch-past-names-btn');
+        // Remove old listeners (cloning)
+        const newBtn = fetchBtn.cloneNode(true);
+        fetchBtn.parentNode.replaceChild(newBtn, fetchBtn);
+
+        newBtn.onclick = () => fetchPastNames(uid);
     }
 
     showGiftSenders(giftId) {
@@ -1153,8 +1384,8 @@ function registerEntry(roomId, roomName, apiPoints, url) {
         console.log(`[ENTRY] Set initial points for Window ${windowIndex + 1}: ${apiPoints}`);
 
         // Auto-connect to the room
-        setTimeout(() => {
-            monitor.toggleConnection();
+        setTimeout(async () => {
+            await monitor.toggleConnection();
             console.log(`[ENTRY] Auto-connecting Window ${windowIndex + 1}`);
         }, 100);
     } else {
@@ -1271,3 +1502,282 @@ document.querySelector('.test-count-btn').classList.add('selected');
 
 // Initial setup with 6 windows
 initializeMonitors(6);
+
+// Initialize Cloudflare Settings
+const cfUrlInput = document.getElementById('cfWorkerUrl');
+const cfIntervalInput = document.getElementById('cfSendInterval');
+if (cfUrlInput) cfUrlInput.value = cfWorkerUrl;
+if (cfIntervalInput) cfIntervalInput.value = cfSendInterval;
+
+document.getElementById('cfSaveBtn')?.addEventListener('click', () => {
+    const url = document.getElementById('cfWorkerUrl').value.trim();
+    const interval = parseInt(document.getElementById('cfSendInterval').value);
+
+    if (url && interval > 0) {
+        cfWorkerUrl = url;
+        cfSendInterval = interval;
+        localStorage.setItem('cf_worker_url', cfWorkerUrl);
+        localStorage.setItem('cf_send_interval', cfSendInterval);
+        localStorage.setItem('cf_auto_send_enabled', 'true'); // Save state
+
+        startCfTimer();
+        alert('設定を保存し、タイマーを開始しました。');
+    } else {
+        alert('有効なURLと間隔を入力してください。');
+    }
+});
+
+document.getElementById('cfForceSendBtn')?.addEventListener('click', async () => {
+    if (!cfWorkerUrl) {
+        alert('URLが設定されていません。先に設定を保存してください。');
+        return;
+    }
+
+    const originalText = document.getElementById('cfForceSendBtn').textContent;
+    document.getElementById('cfForceSendBtn').textContent = '送信中...';
+    document.getElementById('cfForceSendBtn').disabled = true;
+
+    await sendToCloudflare();
+
+    document.getElementById('cfForceSendBtn').textContent = originalText;
+    document.getElementById('cfForceSendBtn').disabled = false;
+});
+
+document.getElementById('cfStopBtn')?.addEventListener('click', () => {
+    if (cfIntervalTimer) {
+        clearInterval(cfIntervalTimer);
+        cfIntervalTimer = null;
+    }
+    nextSendTime = null;
+    updateCfStatusDisplay();
+    localStorage.setItem('cf_auto_send_enabled', 'false'); // Save state
+});
+
+// Check auto-send enabled state on load
+const autoSendEnabled = localStorage.getItem('cf_auto_send_enabled');
+if (autoSendEnabled === 'true') {
+    startCfTimer();
+} else {
+    updateCfStatusDisplay(); // Ensure display is updated even if stopped
+}
+
+// ==========================================
+// Feature: Auto-Fetch Event Ranking from Window 1
+// ==========================================
+async function updateEventRankingFromWindow1() {
+    console.log("[EventRanking] Updating...");
+    const monitor1 = monitors[0];
+    if (!monitor1) return;
+
+    // サイドバーのエリア取得
+    const container = document.getElementById('sidebar-ranking');
+    if (!container) return;
+
+    // 既存の "Upcoming Mode" (External Ranking) エリアがあれば非表示にする
+    const extRank = document.getElementById('external-ranking-container');
+    if (extRank) extRank.style.display = 'none';
+
+    let eventRankingDiv = document.getElementById('event-ranking-container');
+
+    // コンテナがない場合は作成
+    if (!eventRankingDiv) {
+        eventRankingDiv = document.createElement('div');
+        eventRankingDiv.id = 'event-ranking-container';
+        eventRankingDiv.style.borderTop = '2px solid #333';
+        eventRankingDiv.style.marginTop = '5px';
+        eventRankingDiv.style.paddingTop = '5px';
+        eventRankingDiv.style.flex = 'none'; // 自動で広げない
+        eventRankingDiv.style.overflowY = 'auto';
+        eventRankingDiv.style.background = '#e3f2fd';
+        eventRankingDiv.style.height = '30%'; // 下3割を使う
+
+        // 挿入場所: ranking-table-body を含むdivの後ろ、あるいは最後
+        // containerの構造: h4, div(Time), div(Report), div(Table), div(ExtRank)
+        // Tableエリアの高さを制限して、その下に配置
+
+        const tableArea = container.querySelector('div[style*="overflow-y:auto"]');
+        if (tableArea) {
+            tableArea.style.flex = '1'; // 残りのスペース全て(上7割)
+            tableArea.style.height = 'auto'; // 固定高さを解除
+
+            // 既に挿入済みでなければ挿入
+            if (!container.contains(eventRankingDiv)) {
+                container.appendChild(eventRankingDiv);
+            }
+        } else {
+            container.appendChild(eventRankingDiv);
+        }
+    }
+
+    // Window 1 が接続済みで、イベント情報を持っているか確認
+    if (!monitor1.currentEvent || !monitor1.currentEvent.event_id) {
+        eventRankingDiv.innerHTML = `
+            <div style="padding:10px; font-size:0.85em; color:#666; text-align:center;">
+                イベント情報なし<br>
+                <span style="font-size:0.8em;">(Window 1 待機中...)</span>
+            </div>
+        `;
+        return;
+    }
+
+    const eventId = monitor1.currentEvent.event_id;
+    const eventName = monitor1.currentEvent.event_name;
+    // 画像URLの候補を増やす
+    const eventImage = monitor1.currentEvent.image_url || monitor1.currentEvent.image || monitor1.currentEvent.image_l || monitor1.currentEvent.banner_url;
+
+    // イベントページへのURL生成
+    let eventUrl = '#';
+    const urlKey = monitor1.currentEvent.event_url_key || monitor1.currentEvent.url_key;
+
+    if (urlKey) {
+        eventUrl = `https://www.showroom-live.com/event/${urlKey}`;
+    } else if (monitor1.currentEvent.event_url) {
+        eventUrl = monitor1.currentEvent.event_url;
+    } else if (monitor1.currentEvent.event_id) {
+        //eventUrl = `https://www.showroom-live.com/event/identifier?event_id=${monitor1.currentEvent.event_id}`;
+        // event_idだけでは飛ばないので、ルームプロフィールへ誘導
+        eventUrl = `https://www.showroom-live.com/room/profile?room_id=${monitor1.roomId}`;
+    } else {
+        // 何もない場合もルームプロフィールへ
+        eventUrl = `https://www.showroom-live.com/room/profile?room_id=${monitor1.roomId}`;
+    }
+    console.log("[EventRanking] Generated URL:", eventUrl, monitor1.currentEvent);
+
+    // ヘッダー部分を先に描画（リンク追加）
+    const headerHtml = `
+        <div style="padding:5px; margin-bottom:5px; border-bottom:1px solid #ccc;">
+            <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px; color:#333;">
+                参加イベント：<br>
+                <a href="${eventUrl}" target="_blank" style="color:#2196F3; text-decoration:underline;">${eventName || '不明'}</a>
+            </div>
+            ${eventImage ? `<a href="${eventUrl}" target="_blank"><img src="${eventImage}" style="max-height:50px; display:block; margin:0 auto 5px auto; border-radius:4px; border:0;"></a>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#eee; padding:2px 5px; font-size:0.85em; font-weight:bold;">
+                <span>参加者</span>
+                <button onclick="updateEventRankingFromWindow1()" style="font-size:0.8em; cursor:pointer; background:#fff; border:1px solid #ccc; border-radius:3px; padding:1px 5px;">再取得</button>
+            </div>
+        </div>
+    `;
+
+    // リスト部分のプレースホルダー
+    const listPlaceHolder = `<div id="event-ranking-list-body" style="padding:10px; color:#666; text-align:center;">ランキング読み込み中...</div>`;
+
+    eventRankingDiv.innerHTML = headerHtml + listPlaceHolder;
+    const listBody = document.getElementById('event-ranking-list-body');
+
+    // API取得
+    try {
+        const urlKeyParam = urlKey ? `&url_key=${urlKey}` : '';
+        const res = await fetch(`/api/event_ranking?event_id=${eventId}${urlKeyParam}`);
+
+        let json;
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        json = await res.json();
+
+        if (!json.ranking || !Array.isArray(json.ranking)) {
+            if (listBody) listBody.innerHTML = '<div style="padding:5px;">ランキングデータなし</div>';
+            return;
+        }
+
+        // リスト構築
+        if (listBody) {
+            listBody.style.textAlign = 'left';
+            listBody.style.padding = '0';
+            let html = '';
+            json.ranking.slice(0, 50).forEach(item => {
+                // すでに開いているかチェック
+                let isOpen = false;
+                let openIndex = -1;
+                for (let i = 0; i < monitors.length; i++) {
+                    if (monitors[i].roomId == item.room.room_id) {
+                        isOpen = true;
+                        openIndex = i + 1;
+                        break;
+                    }
+                }
+
+                html += `
+                <div style="display:flex; align-items:center; padding:3px 5px; border-bottom:1px solid #ddd; ${isOpen ? 'background:#fffde7;' : ''}" onclick="requestAssignRoom(${item.room.room_id}, '${item.room.room_name}', ${item.point})">
+                    <div style="width:25px; text-align:right; font-weight:bold; margin-right:5px; color:${item.rank <= 3 ? '#d00' : '#333'};">${item.rank}</div>
+                    <div style="flex:1; overflow:hidden;">
+                        <div style="font-size:0.85em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:bold;">${item.room.room_name}</div>
+                        <div style="font-size:0.8em; color:#666;">${item.point.toLocaleString()} pt</div>
+                    </div>
+                    ${isOpen ? `<div style="font-size:0.7em; background:#333; color:white; padding:1px 3px; border-radius:2px; margin-left:3px;">W${openIndex}</div>` : ''}
+                </div>
+                `;
+            });
+            listBody.innerHTML = html;
+        }
+
+    } catch (e) {
+        console.error("Event ranking fetch error:", e);
+        if (listBody) {
+            // エラーを目立たないようにし、ブラウザで確認を促す
+            listBody.innerHTML = `
+                <div style="padding:10px; color:#666; text-align:center; font-size:0.85em;">
+                    <a href="${eventUrl}" target="_blank" style="padding:5px 10px; background:#ddd; color:#333; text-decoration:none; border-radius:4px; border:1px solid #ccc; display:inline-block;">
+                       詳細をブラウザで確認 ↗
+                    </a>
+                    <div style="margin-top:5px; font-size:0.8em; color:#999;">(データ自動取得不可)</div>
+                </div>`;
+        }
+    }
+}
+
+// Global function for click handler
+window.requestAssignRoom = function (roomId, name, points) {
+    if (!roomId) return;
+
+    // Check if open
+    for (let i = 0; i < monitors.length; i++) {
+        if (monitors[i].roomId == roomId) {
+            alert(`既に Window ${i + 1} で開いています`);
+            return;
+        }
+    }
+
+    // Find target Window (Start from 2)
+    let target = null;
+
+    // First, look for DISCONNECTED + NO ROOM ID (Empty)
+    for (let i = 1; i < monitors.length; i++) {
+        if (!monitors[i].connected && !monitors[i].roomId) {
+            target = monitors[i];
+            break;
+        }
+    }
+
+    // Next, look for ANY DISCONNECTED
+    if (!target) {
+        for (let i = 1; i < monitors.length; i++) {
+            if (!monitors[i].connected) {
+                target = monitors[i];
+                break;
+            }
+        }
+    }
+
+    if (!target) {
+        if (!confirm("空いているウィンドウがありません (Window 2-6)。\\nWindow 2 に上書きしますか？")) {
+            return;
+        }
+        target = monitors[1];
+    }
+
+    if (target) {
+        if (target.connected) target.disconnect();
+
+        target.roomId = String(roomId);
+        target.ui.roomIdInput.value = roomId;
+        target.initialPoints = points;
+        target.ui.initPointsInput.value = points;
+        target.pointsSet = true; // Auto-set
+        target.updateResetBtnState();
+
+        target.connect();
+    }
+}
+
+// Check every 30 seconds
+setInterval(updateEventRankingFromWindow1, 30000);
+

@@ -1,0 +1,8 @@
+name = "userid-names"
+main = "src/index.js"
+compatibility_date = "2023-12-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "userid-db"
+database_id = "87a27d97-d57e-429b-b04a-2bcf25dc3c0f"
