@@ -1081,7 +1081,7 @@
     <!-- 設定パネル（JSで動的生成されます） -->
     <!-- settingsPanel removed, will be injected by settings_module.js -->
 
-    <script src="./js/settings_module.js"></script>
+    <script src="./js/settings_module.js?v=20251231_2"></script>
     <script>
         // DOM構築のタイミングを待たずに即時実行したいが、bodyはまだパース途中。
         // ただし、このscriptタグより上にはまだ要素が無いので、bodyへの追加は問題ないはずだが、
@@ -1497,6 +1497,12 @@
                 document.getElementById("muteEnabledCheckbox").checked = commentSettings.muteEnabled;
                 document.getElementById("muteSymbolInput").value = commentSettings.muteSymbol;
                 document.getElementById("defaultRoomIdInput").value = commentSettings.defaultRoomId || "";
+                if (document.getElementById("giftMarkerDurationInput")) {
+                    document.getElementById("giftMarkerDurationInput").value = commentSettings.giftMarkerDuration || 20;
+                }
+                if (document.getElementById("commentMarkerDurationInput")) {
+                    document.getElementById("commentMarkerDurationInput").value = commentSettings.commentMarkerDuration || 20;
+                }
 
                 // Apply initial styles
                 document.getElementById("comment").style.fontSize = commentSettings.size + "px";
@@ -1863,32 +1869,37 @@
         }
 
         document.getElementById("toggleSettings").onclick = () => {
-            if (settingsPanel.style.display === "none" || settingsPanel.style.display === "") {
+            // 安全のため都度取得
+            const panel = document.getElementById("settingsPanel");
+            if (!panel) return;
+
+            if (panel.style.display === "none" || panel.style.display === "") {
                 // まず表示
-                settingsPanel.style.display = "block";
+                panel.style.display = "block";
 
                 // リフローを強制
-                void settingsPanel.offsetHeight;
+                void panel.offsetHeight;
 
                 // パネルのサイズを取得
-                const panelWidth = settingsPanel.offsetWidth;
-                const panelHeight = settingsPanel.offsetHeight;
+                const panelWidth = panel.offsetWidth;
+                const panelHeight = panel.offsetHeight;
 
                 // 中央に配置（transformは使わない）
                 const centerLeft = Math.max(0, (window.innerWidth - panelWidth) / 2);
                 const centerTop = Math.max(0, (window.innerHeight - panelHeight) / 2);
 
-                settingsPanel.style.transform = "none";
-                settingsPanel.style.left = `${centerLeft}px`;
-                settingsPanel.style.top = `${centerTop}px`;
+                panel.style.transform = "none";
+                panel.style.left = `${centerLeft}px`;
+                panel.style.top = `${centerTop}px`;
             } else {
-                settingsPanel.style.display = "none";
+                panel.style.display = "none";
             }
         };
 
         document.getElementById("closeSettings").onclick = (e) => {
             e.stopPropagation(); // イベントのバブリングを防ぐ
-            settingsPanel.style.display = "none";
+            const panel = document.getElementById("settingsPanel");
+            if (panel) panel.style.display = "none";
         };
 
         // ✕ボタンのmousedownイベントでもバブリングを防ぐ
@@ -1898,44 +1909,72 @@
 
         // 設定適用
         document.getElementById("applyDisplaySettings").onclick = () => {
-            commentSettings.size = parseInt(document.getElementById("commentFontSize").value);
-            commentSettings.color = document.getElementById("commentColor").value;
-            commentSettings.muteEnabled = document.getElementById("muteEnabledCheckbox").checked;
-            commentSettings.muteSymbol = document.getElementById("muteSymbolInput").value.trim();
-            commentSettings.defaultRoomId = document.getElementById("defaultRoomIdInput").value.trim();
+            try {
+                const fontSizeInput = document.getElementById("commentFontSize");
+                if (fontSizeInput) commentSettings.size = parseInt(fontSizeInput.value);
 
-            // Footer Mode
-            const footerRadios = document.getElementsByName("footerDisplayMode");
-            for (const r of footerRadios) {
-                if (r.checked) {
-                    commentSettings.footerMode = r.value;
-                    break;
+                const colorInput = document.getElementById("commentColor");
+                if (colorInput) commentSettings.color = colorInput.value;
+
+                const muteCheck = document.getElementById("muteEnabledCheckbox");
+                if (muteCheck) commentSettings.muteEnabled = muteCheck.checked;
+
+                const muteSymbol = document.getElementById("muteSymbolInput");
+                if (muteSymbol) commentSettings.muteSymbol = muteSymbol.value.trim();
+
+                const roomInput = document.getElementById("defaultRoomIdInput");
+                if (roomInput) commentSettings.defaultRoomId = roomInput.value.trim();
+
+                // Added checks for new inputs
+                const giftMarkerInput = document.getElementById("giftMarkerDurationInput");
+                if (giftMarkerInput) {
+                    commentSettings.giftMarkerDuration = parseInt(giftMarkerInput.value);
                 }
-            }
+                const commentMarkerInput = document.getElementById("commentMarkerDurationInput");
+                if (commentMarkerInput) {
+                    commentSettings.commentMarkerDuration = parseInt(commentMarkerInput.value);
+                }
 
-            try {
+                // Footer Mode
+                const footerRadios = document.getElementsByName("footerDisplayMode");
+                for (const r of footerRadios) {
+                    if (r.checked) {
+                        commentSettings.footerMode = r.value;
+                        break;
+                    }
+                }
+
                 applyFooterMode();
-            } catch (e) {
-                console.error("Error applying footer mode:", e);
-            }
 
-            document.getElementById("comment").style.fontSize = commentSettings.size + "px";
-            document.getElementById("comment").style.color = commentSettings.color;
+                const commentEl = document.getElementById("comment");
+                if (commentEl) {
+                    commentEl.style.fontSize = commentSettings.size + "px";
+                    commentEl.style.color = commentSettings.color;
+                }
 
-            // Save to localStorage
-            try {
+                // Save to localStorage
                 localStorage.setItem('sr_comment_settings', JSON.stringify(commentSettings));
+
+                // テストモード（通信停止ボタン表示）切り替え
+                // testModeCheckboxが存在しない場合は無視する（エラー回避）
+                const testModeCheckbox = document.getElementById("testModeCheckbox");
+                if (testModeCheckbox) {
+                    const isTestMode = testModeCheckbox.checked;
+                    const pauseBtn = document.getElementById("pauseBtn");
+                    if (pauseBtn) pauseBtn.style.display = isTestMode ? "inline-block" : "none";
+
+                    const testButtons = document.getElementById("testButtons");
+                    if (testButtons) testButtons.style.display = isTestMode ? "block" : "none";
+                }
+
             } catch (e) {
-                console.error("Failed to save settings:", e);
+                console.error("Failed to apply settings:", e);
+                alert("設定の保存中にエラーが発生しました: " + e.message);
             }
 
-            // テストモード（通信停止ボタン表示）切り替え
-            const isTestMode = document.getElementById("testModeCheckbox").checked;
-            document.getElementById("pauseBtn").style.display = isTestMode ? "inline-block" : "none";
-            document.getElementById("testButtons").style.display = isTestMode ? "block" : "none";
-
-            // パネルを閉じる
-            settingsPanel.style.display = "none";
+            // パネルを閉じる (常に実行)
+            const panel = document.getElementById("settingsPanel");
+            if (panel) panel.style.display = "none";
         };
 
         // テストユーザー選択機能
@@ -2113,15 +2152,20 @@
         };
 
         // 通信一時停止/再開ボタン
+        // 通信一時停止/再開ボタン
         document.getElementById("pauseBtn").onclick = () => {
             isPaused = !isPaused;
             const btn = document.getElementById("pauseBtn");
+            const settingsBtn = document.getElementById("settingsPauseBtn");
+
             if (isPaused) {
                 btn.textContent = "▶ 通信再開";
                 btn.style.background = "#4CAF50";
+                if (settingsBtn) updatePauseButton(settingsBtn);
             } else {
                 btn.textContent = "⏸ 通信停止";
                 btn.style.background = "#ff9800";
+                if (settingsBtn) updatePauseButton(settingsBtn);
             }
         };
 
@@ -2290,6 +2334,7 @@
             }
 
             const div = document.createElement("div");
+            div.className = "comment-item";
             div.style.display = "flex";
             div.style.alignItems = "flex-start";   // 上揃え
             div.style.marginBottom = "5px";
@@ -2383,6 +2428,10 @@
             // 重複チェック用にコメントを記録
             const commentHash = `${c.u}_${c.cm}_${c.created_at || Date.now()}`;
             receivedComments.add(commentHash);
+
+            // コメントマーカー（赤バー）初期適用
+            div.dataset.receivedAt = Date.now();
+            div.classList.add("old-gift-border");
 
             document.getElementById("comment").prepend(div);
         }
@@ -3106,9 +3155,11 @@
         // ギフトの経過時間チェック（設定秒数以内は表示、過ぎたら消す）
         setInterval(() => {
             const now = Date.now();
-            const duration = (commentSettings.giftMarkerDuration || 20) * 1000;
+            const giftDuration = (commentSettings.giftMarkerDuration || 20) * 1000;
+            const commentDuration = (commentSettings.commentMarkerDuration || 20) * 1000;
             const containerIds = ["paidGift", "freeStar", "freeOther"];
 
+            // Gift Check
             containerIds.forEach(id => {
                 const container = document.getElementById(id);
                 if (!container) return;
@@ -3118,7 +3169,7 @@
                 for (let item of items) {
                     const receivedAt = parseInt(item.dataset.receivedAt);
                     if (receivedAt) {
-                        if (now - receivedAt < duration) {
+                        if (now - receivedAt < giftDuration) {
                             if (!item.classList.contains("old-gift-border")) {
                                 item.classList.add("old-gift-border");
                             }
@@ -3130,6 +3181,30 @@
                     }
                 }
             });
+
+            // Comment Check
+            const commentContainer = document.getElementById("comment");
+            if (commentContainer) {
+                const items = commentContainer.getElementsByClassName("comment-item");
+                // 最適化: 新しいものから見ていき、期限切れが見つかったらそれ以降も期限切れの可能性が高い（が、prependなので逆か？）
+                // prependで追加されているなら、上にあるものが新しい。
+                // 全数チェックでも数が少なければ問題ないが、古いのから消すべきか。
+                // LiveCollectionなのでループ中の削除は注意が必要だが、今回はclass操作のみなので安全。
+                for (let item of items) {
+                    const receivedAt = parseInt(item.dataset.receivedAt);
+                    if (receivedAt) {
+                        if (now - receivedAt < commentDuration) {
+                            if (!item.classList.contains("old-gift-border")) {
+                                item.classList.add("old-gift-border");
+                            }
+                        } else {
+                            if (item.classList.contains("old-gift-border")) {
+                                item.classList.remove("old-gift-border");
+                            }
+                        }
+                    }
+                }
+            }
         }, 1000);
 
         // ギフトポイント計算関数
@@ -4501,48 +4576,10 @@
         // SettingsPanel生成後に実行される想定
 
         function setupSettingsHandlers() {
-            const applyBtn = document.getElementById("applyDisplaySettings");
-            if (applyBtn) {
-                applyBtn.addEventListener("click", () => {
-                    // Get values
-                    const size = document.getElementById("commentFontSize").value;
-                    const color = document.getElementById("commentColor").value;
-                    const markerDuration = document.getElementById("giftMarkerDurationInput").value;
-
-                    const radios = document.getElementsByName("footerDisplayMode");
-                    let mode = "show_10k";
-                    for (const r of radios) {
-                        if (r.checked) mode = r.value;
-                    }
-
-                    // Update Settings
-                    commentSettings.size = parseInt(size);
-                    commentSettings.color = color;
-                    commentSettings.footerMode = mode;
-                    commentSettings.giftMarkerDuration = parseInt(markerDuration) || 20;
-
-                    // Apply
-                    document.getElementById("comment").style.fontSize = size + "px";
-                    document.getElementById("comment").style.color = color;
-                    applyFooterMode();
-
-                    // Save
-                    localStorage.setItem('sr_comment_settings', JSON.stringify(commentSettings));
-                    alert("設定を保存しました");
-                });
-            }
-
             // 初期値セット
             const durationInput = document.getElementById("giftMarkerDurationInput");
             if (durationInput) {
                 durationInput.value = commentSettings.giftMarkerDuration || 20;
-            }
-
-            // 設定ボタンで開く際に再セットするためのリスナー
-            const toggleBtn = document.getElementById("toggleSettings");
-            if (toggleBtn) {
-                toggleBtn.removeEventListener("click", openSettingsPanel); // 重複防止
-                toggleBtn.addEventListener("click", openSettingsPanel);
             }
 
             // 通信停止・再開ボタン (タブ3)
@@ -4556,8 +4593,23 @@
                         setStatus("paused"); // "切断"などの表示変更
                     } else {
                         console.log("通信再開 (User requested)");
-                        if (currentRoomId) setStatus("connected");
-                        else setStatus("disconnected");
+                        if (currentRoomId) {
+                            // すぐに"接続中"にするのではなく、実際の状態をチェックして更新
+                            if (startedAt) {
+                                setStatus("connected");
+                            } else {
+                                setStatus("disconnected"); // または "ready" など、非配信中の状態
+                                // 念のため再チェックを走らせる
+                                if (currentRoomId) {
+                                    console.log("Re-checking live status for:", currentRoomId);
+                                    checkLiveStatus(currentRoomId);
+                                    // 状態が更新されるまで少し待つか、disconnectedのまま待機
+                                    // checkLiveStatus内でstartedAtが更新されれば次のpollingでconnectedになる
+                                }
+                            }
+                        } else {
+                            setStatus("disconnected");
+                        }
                     }
                     updatePauseButton(pauseBtn);
                 };
@@ -4571,27 +4623,6 @@
             } else {
                 btn.textContent = "通信を停止する";
                 btn.style.background = "#FF5722"; // Orange/Red
-            }
-        }
-
-        function openSettingsPanel() {
-            const panel = document.getElementById("settingsPanel");
-            if (!panel) return;
-
-            if (panel.style.display === "none") {
-                panel.style.display = "block";
-                // 値をリロード
-                document.getElementById("commentFontSize").value = commentSettings.size;
-                document.getElementById("commentColor").value = commentSettings.color;
-                if (document.getElementById("giftMarkerDurationInput"))
-                    document.getElementById("giftMarkerDurationInput").value = commentSettings.giftMarkerDuration || 20;
-
-                const radios = document.getElementsByName("footerDisplayMode");
-                for (const r of radios) {
-                    if (r.value === commentSettings.footerMode) r.checked = true;
-                }
-            } else {
-                panel.style.display = "none";
             }
         }
 

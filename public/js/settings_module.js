@@ -24,7 +24,7 @@ window.SettingsPanel = class SettingsPanel {
             <!-- タブ切り替えボタン -->
             <div style="display:flex; border-bottom:1px solid #ddd; background:#f9f9f9;">
                 <div class="settings-tab active" data-target="tab1" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:white; font-weight:bold; border-bottom: 2px solid #2196F3;">設定1 (基本)</div>
-                <div class="settings-tab" data-target="tab2" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">設定2 (表示)</div>
+                <div class="settings-tab" data-target="tab2" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">設定2 (通信)</div>
                 <div class="settings-tab" data-target="tab3" style="flex:1; padding:10px; text-align:center; cursor:pointer; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">テスト</div>
             </div>
 
@@ -68,9 +68,50 @@ window.SettingsPanel = class SettingsPanel {
 
 
 
-                    <!-- Cloudflare Settings -->
-                    <div style="margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; background:#fcfcfc; padding:10px; border-radius:5px;">
-                        <div style="font-weight:bold; margin-bottom:8px; color:#444;">Cloudflare設定</div>
+
+                    <!-- フッター表示設定 (Moved from Tab 2) -->
+                    <div style="margin-bottom: 15px; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em; border-bottom:1px solid #eee; padding-bottom:5px;">フッター表示設定</h3>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <label style="cursor: pointer; display:flex; align-items:center;">
+                                <input type="radio" name="footerDisplayMode" value="show_10k" style="margin-right:8px;">
+                                ユーザー別10000PT達成
+                            </label>
+                            <label style="cursor: pointer; display:flex; align-items:center;">
+                                <input type="radio" name="footerDisplayMode" value="show_event" style="margin-right:8px;">
+                                参加中イベント情報
+                            </label>
+                            <label style="cursor: pointer; display:flex; align-items:center;">
+                                <input type="radio" name="footerDisplayMode" value="none" style="margin-right:8px;">
+                                空欄（非表示）
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- マーカー設定 (Moved from Tab 2) -->
+                    <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">マーカー設定（赤バー）</h3>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; align-items:center;">
+                                <label style="margin-right:10px; min-width:80px;">ギフト表示(秒):</label>
+                                <input type="number" id="giftMarkerDurationInput" value="20" min="1" max="3600" style="width: 60px; padding:4px; border:1px solid #ccc; border-radius:3px; text-align:center;">
+                            </div>
+                            <div style="display:flex; align-items:center;">
+                                <label style="margin-right:10px; min-width:80px;">コメント表示(秒):</label>
+                                <input type="number" id="commentMarkerDurationInput" value="20" min="1" max="3600" style="width: 60px; padding:4px; border:1px solid #ccc; border-radius:3px; text-align:center;">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ============================ TAB 2 ============================ -->
+                <div id="tab2" class="settings-content" style="display:none;">
+                    
+                     <!-- Cloudflare Settings (Moved from Tab 1) -->
+                    <div style="margin-top: 15px; padding:10px; border-radius:5px;">
+                        <div style="font-weight:bold; margin-bottom:2px; color:#444;">Cloudflare設定</div>
+                        <div style="font-size:0.8em; color:#666; margin-bottom:8px;">ID ユーザー名 収集</div>
                         
                         <!-- URL Input -->
                         <div style="margin-bottom:8px;">
@@ -100,38 +141,6 @@ window.SettingsPanel = class SettingsPanel {
                         
                         <pre id="cfTestResult" style="margin-top:8px; padding:8px; background:#333; color:#0f0; border-radius:4px; font-size:0.8em; white-space:pre-wrap; max-height:100px; overflow-y:auto; display:none;"></pre>
                     </div>
-                </div>
-
-                <!-- ============================ TAB 2 ============================ -->
-                <div id="tab2" class="settings-content" style="display:none;">
-                    
-                    <div style="margin-bottom: 15px;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em; border-bottom:1px solid #eee; padding-bottom:5px;">フッター表示設定</h3>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <label style="cursor: pointer; display:flex; align-items:center;">
-                                <input type="radio" name="footerDisplayMode" value="show_10k" style="margin-right:8px;">
-                                ユーザー別10000PT達成
-                            </label>
-                            <label style="cursor: pointer; display:flex; align-items:center;">
-                                <input type="radio" name="footerDisplayMode" value="show_event" style="margin-right:8px;">
-                                参加中イベント情報
-                            </label>
-                            <label style="cursor: pointer; display:flex; align-items:center;">
-                                <input type="radio" name="footerDisplayMode" value="none" style="margin-right:8px;">
-                                空欄（非表示）
-                            </label>
-                        </div>
-                        </div>
-
-                    <!-- ギフトマーカー設定 -->
-                    <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">ギフトマーカー設定</h3>
-                        <div style="display:flex; align-items:center;">
-                            <label style="margin-right:10px;">表示時間(秒):</label>
-                            <input type="number" id="giftMarkerDurationInput" value="20" min="1" max="3600" style="width: 60px; padding:4px; border:1px solid #ccc; border-radius:3px; text-align:center;">
-                        </div>
-                    </div>
-
                     </div>
 
                 <!-- ============================ TAB 3 (TEST) ============================ -->
@@ -253,6 +262,23 @@ window.SettingsPanel = class SettingsPanel {
 
                 const targetId = tab.getAttribute('data-target');
                 document.getElementById(targetId).style.display = 'block';
+
+                // タブ切り替え時に常にパネルを中央に配置する
+                const panel = document.getElementById(this.panelId);
+                if (panel) {
+                    // リフローを強制
+                    void panel.offsetHeight;
+
+                    const panelWidth = panel.offsetWidth;
+                    const panelHeight = panel.offsetHeight;
+
+                    const centerLeft = Math.max(0, (window.innerWidth - panelWidth) / 2);
+                    const centerTop = Math.max(0, (window.innerHeight - panelHeight) / 2);
+
+                    panel.style.top = `${centerTop}px`;
+                    panel.style.left = `${centerLeft}px`;
+                    panel.style.transform = "none";
+                }
             });
         });
     }
