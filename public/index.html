@@ -3900,6 +3900,7 @@
 
         // Touch support for bottom resizer
         resizer.addEventListener("touchstart", (e) => {
+            if (e.cancelable) e.preventDefault(); // Prevent scroll/zoom
             isResizing = true;
             startY = e.touches[0].clientY;
             startHeight = parseInt(document.defaultView.getComputedStyle(bottomPanel).height, 10);
@@ -3908,6 +3909,7 @@
 
         document.addEventListener("touchmove", (e) => {
             if (!isResizing) return;
+            if (e.cancelable) e.preventDefault(); // Stop scrolling
             const dy = startY - e.touches[0].clientY;
             const newHeight = startHeight + dy;
 
@@ -3966,6 +3968,8 @@
 
             // Touch support for column resizers
             resizer.addEventListener('touchstart', (e) => {
+                if (e.cancelable) e.preventDefault(); // Prevent default touch actions like scroll
+
                 let leftCol = resizer.previousElementSibling;
                 while (leftCol && !leftCol.classList.contains('column')) {
                     leftCol = leftCol.previousElementSibling;
@@ -3983,6 +3987,8 @@
                 document.body.style.userSelect = 'none';
 
                 const onTouchMove = (e) => {
+                    if (e.cancelable) e.preventDefault();
+
                     const dx = e.touches[0].clientX - startX;
                     if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
                         leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
