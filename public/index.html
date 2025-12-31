@@ -3898,6 +3898,29 @@
             }
         });
 
+        // Touch support for bottom resizer
+        resizer.addEventListener("touchstart", (e) => {
+            isResizing = true;
+            startY = e.touches[0].clientY;
+            startHeight = parseInt(document.defaultView.getComputedStyle(bottomPanel).height, 10);
+            document.body.style.userSelect = "none";
+        }, { passive: false });
+
+        document.addEventListener("touchmove", (e) => {
+            if (!isResizing) return;
+            const dy = startY - e.touches[0].clientY;
+            const newHeight = startHeight + dy;
+
+            if (newHeight > 50 && newHeight < window.innerHeight - 150) {
+                bottomPanel.style.height = `${newHeight}px`;
+            }
+        }, { passive: false });
+
+        document.addEventListener("touchend", () => {
+            isResizing = false;
+            document.body.style.userSelect = "";
+        });
+
         // カラムリサイズ機能
         document.querySelectorAll('.col-resizer').forEach(resizer => {
             resizer.addEventListener('mousedown', (e) => {
@@ -3940,6 +3963,42 @@
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             });
+
+            // Touch support for column resizers
+            resizer.addEventListener('touchstart', (e) => {
+                let leftCol = resizer.previousElementSibling;
+                while (leftCol && !leftCol.classList.contains('column')) {
+                    leftCol = leftCol.previousElementSibling;
+                }
+                let rightCol = resizer.nextElementSibling;
+                while (rightCol && !rightCol.classList.contains('column')) {
+                    rightCol = rightCol.nextElementSibling;
+                }
+                if (!leftCol || !rightCol) return;
+
+                const startX = e.touches[0].clientX;
+                const startLeftWidth = leftCol.getBoundingClientRect().width;
+                const startRightWidth = rightCol.getBoundingClientRect().width;
+
+                document.body.style.userSelect = 'none';
+
+                const onTouchMove = (e) => {
+                    const dx = e.touches[0].clientX - startX;
+                    if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
+                        leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
+                        rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                    }
+                };
+
+                const onTouchEnd = () => {
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
+                document.addEventListener('touchend', onTouchEnd);
+            }, { passive: false });
         });
 
 
