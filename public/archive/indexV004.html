@@ -3,20 +3,12 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>SR コメント・ギフト 3カラム + 設定パネル</title>
     <style>
-        html {
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-
         html,
         body {
             height: 100%;
             overflow: hidden;
-            /* Prevent overscroll bounce on whole page */
-            overscroll-behavior: none;
         }
 
         body {
@@ -95,8 +87,6 @@
             flex: 1;
             overflow-y: auto;
             padding: 5px;
-            -webkit-overflow-scrolling: touch;
-            /* Smooth scrolling for iOS */
         }
 
         .sticky-header {
@@ -517,8 +507,6 @@
             height: 150px;
             /* Default height */
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            /* Smooth scrolling for iOS */
             overflow-y: hidden;
             display: flex;
             flex-direction: row;
@@ -1142,13 +1130,6 @@
             <span id="roomNameSpan">Room: -</span>
             <span id="currentLiveStartedAtSpan">未配信</span>
             <span id="currentLiveElapsedSpan">経過時間: -</span>
-
-            <!-- Zoom Controls -->
-            <div style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
-                <button onclick="adjustZoom(-0.1)">➖</button>
-                <span id="zoomLevelDisplay" style="font-weight:bold; min-width: 40px; text-align: center;">100%</span>
-                <button onclick="adjustZoom(0.1)">➕</button>
-            </div>
         </div>
         <div class="header-row">
             <span id="clockSpan" style="font-weight:bold; font-size:1.1em;">--:--:--</span>
@@ -1430,29 +1411,6 @@
         // キャンセル
         document.getElementById("alarmCancelBtn").onclick = closeAlarmModal;
         overlay.onclick = closeAlarmModal;
-
-        // Zoom Control
-        let currentZoom = 1.0;
-        window.adjustZoom = (delta) => {
-            currentZoom = Math.round((currentZoom + delta) * 10) / 10;
-            if (currentZoom < 0.5) currentZoom = 0.5;
-            if (currentZoom > 2.0) currentZoom = 2.0;
-
-            document.getElementById('zoomLevelDisplay').textContent = Math.round(currentZoom * 100) + '%';
-
-            // Apply Zoom
-            // Use 'zoom' property if supported (Chrome/Edge/PC)
-            // Use transform for others (iPad Safari often ignores 'zoom')
-            if (CSS.supports('zoom', '1')) {
-                document.body.style.zoom = currentZoom;
-            } else {
-                // Fallback for Safari/Firefox
-                document.body.style.transform = `scale(${currentZoom})`;
-                document.body.style.transformOrigin = "top left";
-                document.body.style.width = `${100 / currentZoom}%`;
-                document.body.style.height = `${100 / currentZoom}%`;
-            }
-        };
 
         // 設定
         let commentSettings = { size: 14, color: "#000000", muteEnabled: false, muteSymbol: "", defaultRoomId: "", footerMode: "show_10k" };
