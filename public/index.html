@@ -98,8 +98,14 @@
             flex: 1;
             overflow-y: auto;
             padding: 5px;
-            -webkit-overflow-scrolling: touch;
             /* Smooth scrolling for iOS */
+        }
+
+        /* 20秒経過した有料ギフトに表示するボーダー */
+        .old-gift-border {
+            border-bottom: 2px solid red !important;
+            padding-bottom: 2px;
+            /* ボーダーとコンテンツの間隔 */
         }
 
         .sticky-header {
@@ -2922,6 +2928,8 @@
                 giftMap = paidGiftMap;
             }
 
+            const now = Date.now();
+
 
             const key = `${g.u}_${g.g}`;
 
@@ -2929,6 +2937,12 @@
                 const item = giftMap[key];
                 item.count += g.n;
                 item.time = Date.now();
+
+                // タイムスタンプ更新（20秒ルールのリセット）
+                if (gt !== 2) {
+                    item.div.dataset.receivedAt = now;
+                    item.div.classList.remove("old-gift-border"); // 更新時はボーダーを消す
+                }
 
                 // ギフト履歴に追加（更新時も）
                 const giftInfo = giftMasterData[g.g];
@@ -3084,7 +3098,34 @@
 
             // 高額ギフトチェック
             checkAndDisplayHighValueGift(g.u, g.ac, g.av, g.g, g.n);
+
+            if (gt !== 2) {
+                div.dataset.receivedAt = Date.now();
+            }
         }
+
+        // 有料ギフトの20秒経過チェック
+        setInterval(() => {
+            const now = Date.now();
+            const container = document.getElementById("paidGift");
+            if (!container) return;
+
+            const items = container.getElementsByClassName("giftItem");
+            for (let item of items) {
+                const receivedAt = parseInt(item.dataset.receivedAt);
+                if (receivedAt) {
+                    if (now - receivedAt >= 20000) {
+                        if (!item.classList.contains("old-gift-border")) {
+                            item.classList.add("old-gift-border");
+                        }
+                    } else {
+                        if (item.classList.contains("old-gift-border")) {
+                            item.classList.remove("old-gift-border");
+                        }
+                    }
+                }
+            }
+        }, 1000);
 
         // ギフトポイント計算関数
         function calculateGiftPoints(giftId, count, isFree, basePoint) {
