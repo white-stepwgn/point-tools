@@ -1655,6 +1655,8 @@
                 console.warn("Event points update failed:", e);
             }
         }
+
+        let currentEventData = null; // Initialize currentEventData
         let currentEventPoints = { initial: null, current: null, lastUpdated: null }; // イベントポイント情報
         let eventPointInterval = null; // ポイント定期更新用タイマー
 
@@ -1894,7 +1896,11 @@
                 }
             }
 
-            applyFooterMode();
+            try {
+                applyFooterMode();
+            } catch (e) {
+                console.error("Error applying footer mode:", e);
+            }
 
             document.getElementById("comment").style.fontSize = commentSettings.size + "px";
             document.getElementById("comment").style.color = commentSettings.color;
