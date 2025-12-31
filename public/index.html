@@ -1148,6 +1148,7 @@
                 <button onclick="adjustZoom(-0.1)">➖</button>
                 <span id="zoomLevelDisplay" style="font-weight:bold; min-width: 40px; text-align: center;">100%</span>
                 <button onclick="adjustZoom(0.1)">➕</button>
+                <button onclick="resetZoom()" title="リセット">↺</button>
             </div>
         </div>
         <div class="header-row">
@@ -1433,16 +1434,13 @@
 
         // Zoom Control
         let currentZoom = 1.0;
-        window.adjustZoom = (delta) => {
-            currentZoom = Math.round((currentZoom + delta) * 10) / 10;
-            if (currentZoom < 0.5) currentZoom = 0.5;
-            if (currentZoom > 2.0) currentZoom = 2.0;
 
+        function applyZoom() {
             document.getElementById('zoomLevelDisplay').textContent = Math.round(currentZoom * 100) + '%';
 
             // Apply Zoom
             // Use 'zoom' property if supported (Chrome/Edge/PC)
-            // Use transform for others (iPad Safari often ignores 'zoom')
+            // Use transform for others (iPad Safari which often ignores 'zoom' or handles it differently)
             if (CSS.supports('zoom', '1')) {
                 document.body.style.zoom = currentZoom;
             } else {
@@ -1452,6 +1450,18 @@
                 document.body.style.width = `${100 / currentZoom}%`;
                 document.body.style.height = `${100 / currentZoom}%`;
             }
+        }
+
+        window.adjustZoom = (delta) => {
+            currentZoom = Math.round((currentZoom + delta) * 10) / 10;
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            if (currentZoom > 1.5) currentZoom = 1.5;
+            applyZoom();
+        };
+
+        window.resetZoom = () => {
+            currentZoom = 1.0;
+            applyZoom();
         };
 
         // 設定
