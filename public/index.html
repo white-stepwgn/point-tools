@@ -4061,10 +4061,19 @@
             }
         });
         // ウィンドウリサイズ時に設定パネルの位置を調整
+        // ウィンドウリサイズ時に設定パネルの位置を調整
         window.addEventListener("resize", () => {
             if (settingsPanel.style.display === "block") {
                 adjustSettingsPanelPosition();
             }
+
+            // 画面回転時などにカラム幅固定により右側に余白ができるのを防ぐため、幅設定をリセット
+            document.querySelectorAll('.column').forEach(col => {
+                col.style.flex = "";
+            });
+
+            // ズーム再適用
+            applyZoom();
         });
 
 
