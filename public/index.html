@@ -85,6 +85,9 @@
             padding: 0;
             min-width: 0;
             /* Prevent flex item overflow */
+            overflow-wrap: break-word;
+            /* テキスト折り返しを強制 */
+            word-break: break-word;
         }
 
         /* コンテンツエリア（スクロール対象） */
@@ -1450,9 +1453,14 @@
                 // 一度リセットしてから再設定
                 document.body.style.width = "";
                 document.body.style.height = "";
-                document.body.style.width = `${window.innerWidth / currentZoom}px`;
-                document.body.style.height = `${window.innerHeight / currentZoom}px`;
+                document.body.style.width = `${document.documentElement.clientWidth / currentZoom}px`;
+                document.body.style.height = `${document.documentElement.clientHeight / currentZoom}px`;
             }
+
+            // ズーム変更時にカラム幅固定をリセットして、右側に余白ができないようにする
+            document.querySelectorAll('.column').forEach(col => {
+                col.style.flex = "";
+            });
         }
 
         window.adjustZoom = (delta) => {
