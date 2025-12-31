@@ -1447,8 +1447,11 @@
                 // Fallback for Safari/Firefox
                 document.body.style.transform = `scale(${currentZoom})`;
                 document.body.style.transformOrigin = "top left";
-                document.body.style.width = `${100 / currentZoom}%`;
-                document.body.style.height = `${100 / currentZoom}%`;
+                // 一度リセットしてから再設定
+                document.body.style.width = "";
+                document.body.style.height = "";
+                document.body.style.width = `${window.innerWidth / currentZoom}px`;
+                document.body.style.height = `${window.innerHeight / currentZoom}px`;
             }
         }
 
@@ -4061,19 +4064,22 @@
             }
         });
         // ウィンドウリサイズ時に設定パネルの位置を調整
-        // ウィンドウリサイズ時に設定パネルの位置を調整
+        let resizeTimer;
         window.addEventListener("resize", () => {
-            if (settingsPanel.style.display === "block") {
-                adjustSettingsPanelPosition();
-            }
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (settingsPanel.style.display === "block") {
+                    adjustSettingsPanelPosition();
+                }
 
-            // 画面回転時などにカラム幅固定により右側に余白ができるのを防ぐため、幅設定をリセット
-            document.querySelectorAll('.column').forEach(col => {
-                col.style.flex = "";
-            });
+                // 画面回転時などにカラム幅固定により右側に余白ができるのを防ぐため、幅設定をリセット
+                document.querySelectorAll('.column').forEach(col => {
+                    col.style.flex = "";
+                });
 
-            // ズーム再適用
-            applyZoom();
+                // ズーム再適用
+                applyZoom();
+            }, 200);
         });
 
 
