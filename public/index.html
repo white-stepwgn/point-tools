@@ -3928,6 +3928,14 @@
 
         // カラムリサイズ機能
         document.querySelectorAll('.col-resizer').forEach(resizer => {
+            const isLastColumn = (el) => {
+                let next = el.nextElementSibling;
+                while (next) {
+                    if (next.classList.contains('column')) return false;
+                    next = next.nextElementSibling;
+                }
+                return true;
+            };
             resizer.addEventListener('mousedown', (e) => {
                 let leftCol = resizer.previousElementSibling;
                 while (leftCol && !leftCol.classList.contains('column')) {
@@ -3954,7 +3962,12 @@
                     // 最小幅チェック (50px)
                     if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
                         leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
-                        rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        // 最後のカラムなら自動幅にして余白を埋める
+                        if (!isLastColumn(rightCol)) {
+                            rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        } else {
+                            rightCol.style.flex = "";
+                        }
                     }
                 };
 
@@ -3995,7 +4008,11 @@
                     const dx = e.touches[0].clientX - startX;
                     if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
                         leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
-                        rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        if (!isLastColumn(rightCol)) {
+                            rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        } else {
+                            rightCol.style.flex = "";
+                        }
                     }
                 };
 
