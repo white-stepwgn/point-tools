@@ -1482,7 +1482,7 @@
         };
 
         // 設定
-        let commentSettings = { size: 14, color: "#000000", muteEnabled: false, muteSymbol: "", defaultRoomId: "", footerMode: "show_10k" };
+        let commentSettings = { size: 14, color: "#000000", muteEnabled: false, muteSymbol: "", defaultRoomId: "", footerMode: "show_10k", giftMarkerDuration: 20 };
 
         // Load settings from localStorage
         try {
@@ -2938,11 +2938,10 @@
                 item.count += g.n;
                 item.time = Date.now();
 
-                // タイムスタンプ更新（20秒以内の強調表示）
-                if (gt !== 2) {
-                    item.div.dataset.receivedAt = now;
-                    item.div.classList.add("old-gift-border"); // 更新時はボーダーを表示（復活）
-                }
+                // タイムスタンプ更新（指定秒数以内の強調表示）
+                // 無料ギフトも含めて全て対象
+                item.div.dataset.receivedAt = now;
+                item.div.classList.add("old-gift-border"); // 更新時はボーダーを表示（復活）
 
                 // ギフト履歴に追加（更新時も）
                 const giftInfo = giftMasterData[g.g];
@@ -3099,33 +3098,38 @@
             // 高額ギフトチェック
             checkAndDisplayHighValueGift(g.u, g.ac, g.av, g.g, g.n);
 
-            if (gt !== 2) {
-                div.dataset.receivedAt = Date.now();
-                div.classList.add("old-gift-border"); // 新規作成時はボーダーを表示
-            }
+            // 全てのギフトでタイムスタンプ更新とボーダー表示
+            div.dataset.receivedAt = Date.now();
+            div.classList.add("old-gift-border"); // 新規作成時はボーダーを表示
         }
 
-        // 有料ギフトの20秒経過チェック（20秒以内は表示、過ぎたら消す）
+        // ギフトの経過時間チェック（設定秒数以内は表示、過ぎたら消す）
         setInterval(() => {
             const now = Date.now();
-            const container = document.getElementById("paidGift");
-            if (!container) return;
+            const duration = (commentSettings.giftMarkerDuration || 20) * 1000;
+            const containerIds = ["paidGift", "freeStar", "freeOther"];
 
-            const items = container.getElementsByClassName("giftItem");
-            for (let item of items) {
-                const receivedAt = parseInt(item.dataset.receivedAt);
-                if (receivedAt) {
-                    if (now - receivedAt < 20000) {
-                        if (!item.classList.contains("old-gift-border")) {
-                            item.classList.add("old-gift-border");
-                        }
-                    } else {
-                        if (item.classList.contains("old-gift-border")) {
-                            item.classList.remove("old-gift-border");
+            containerIds.forEach(id => {
+                const container = document.getElementById(id);
+                if (!container) return;
+
+                // getElementsByClassNameはLiveCollectionなので高速
+                const items = container.getElementsByClassName("giftItem");
+                for (let item of items) {
+                    const receivedAt = parseInt(item.dataset.receivedAt);
+                    if (receivedAt) {
+                        if (now - receivedAt < duration) {
+                            if (!item.classList.contains("old-gift-border")) {
+                                item.classList.add("old-gift-border");
+                            }
+                        } else {
+                            if (item.classList.contains("old-gift-border")) {
+                                item.classList.remove("old-gift-border");
+                            }
                         }
                     }
                 }
-            }
+            });
         }, 1000);
 
         // ギフトポイント計算関数
@@ -4489,6 +4493,117 @@
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
+            }
+        });
+
+        // 設定パネル初期化・イベントハンドラ
+        // iframeや動的生成要素のため、イベント委譲または存在チェックが必要
+        // SettingsPanel生成後に実行される想定
+
+        function setupSettingsHandlers() {
+            const applyBtn = document.getElementById("applyDisplaySettings");
+            if (applyBtn) {
+                applyBtn.addEventListener("click", () => {
+                    // Get values
+                    const size = document.getElementById("commentFontSize").value;
+                    const color = document.getElementById("commentColor").value;
+                    const markerDuration = document.getElementById("giftMarkerDurationInput").value;
+
+                    const radios = document.getElementsByName("footerDisplayMode");
+                    let mode = "show_10k";
+                    for (const r of radios) {
+                        if (r.checked) mode = r.value;
+                    }
+
+                    // Update Settings
+                    commentSettings.size = parseInt(size);
+                    commentSettings.color = color;
+                    commentSettings.footerMode = mode;
+                    commentSettings.giftMarkerDuration = parseInt(markerDuration) || 20;
+
+                    // Apply
+                    document.getElementById("comment").style.fontSize = size + "px";
+                    document.getElementById("comment").style.color = color;
+                    applyFooterMode();
+
+                    // Save
+                    localStorage.setItem('sr_comment_settings', JSON.stringify(commentSettings));
+                    alert("設定を保存しました");
+                });
+            }
+
+            // 初期値セット
+            const durationInput = document.getElementById("giftMarkerDurationInput");
+            if (durationInput) {
+                durationInput.value = commentSettings.giftMarkerDuration || 20;
+            }
+
+            // 設定ボタンで開く際に再セットするためのリスナー
+            const toggleBtn = document.getElementById("toggleSettings");
+            if (toggleBtn) {
+                toggleBtn.removeEventListener("click", openSettingsPanel); // 重複防止
+                toggleBtn.addEventListener("click", openSettingsPanel);
+            }
+
+            // 通信停止・再開ボタン (タブ3)
+            const pauseBtn = document.getElementById("settingsPauseBtn");
+            if (pauseBtn) {
+                updatePauseButton(pauseBtn);
+                pauseBtn.onclick = () => {
+                    isPaused = !isPaused;
+                    if (isPaused) {
+                        console.log("通信停止 (User requested)");
+                        setStatus("paused"); // "切断"などの表示変更
+                    } else {
+                        console.log("通信再開 (User requested)");
+                        if (currentRoomId) setStatus("connected");
+                        else setStatus("disconnected");
+                    }
+                    updatePauseButton(pauseBtn);
+                };
+            }
+        }
+
+        function updatePauseButton(btn) {
+            if (isPaused) {
+                btn.textContent = "通信を再開する";
+                btn.style.background = "#4CAF50"; // Green
+            } else {
+                btn.textContent = "通信を停止する";
+                btn.style.background = "#FF5722"; // Orange/Red
+            }
+        }
+
+        function openSettingsPanel() {
+            const panel = document.getElementById("settingsPanel");
+            if (!panel) return;
+
+            if (panel.style.display === "none") {
+                panel.style.display = "block";
+                // 値をリロード
+                document.getElementById("commentFontSize").value = commentSettings.size;
+                document.getElementById("commentColor").value = commentSettings.color;
+                if (document.getElementById("giftMarkerDurationInput"))
+                    document.getElementById("giftMarkerDurationInput").value = commentSettings.giftMarkerDuration || 20;
+
+                const radios = document.getElementsByName("footerDisplayMode");
+                for (const r of radios) {
+                    if (r.value === commentSettings.footerMode) r.checked = true;
+                }
+            } else {
+                panel.style.display = "none";
+            }
+        }
+
+        // SettingsPanelは同期的に生成されるはずなので、ここでセットアップ
+        // もし生成がdelayedなら、setTimeoutなどで待つ
+        setTimeout(setupSettingsHandlers, 500);
+
+        // 閉じるボタンの処理は SettingsPanel 内で委譲されていない場合があるのでここでも確認
+        document.addEventListener("click", (e) => {
+            if (e.target.id === "closeSettings") {
+                const panel = document.getElementById("settingsPanel");
+                if (panel) panel.style.display = "none";
             }
         });
     </script>

@@ -24,7 +24,8 @@ window.SettingsPanel = class SettingsPanel {
             <!-- タブ切り替えボタン -->
             <div style="display:flex; border-bottom:1px solid #ddd; background:#f9f9f9;">
                 <div class="settings-tab active" data-target="tab1" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:white; font-weight:bold; border-bottom: 2px solid #2196F3;">設定1 (基本)</div>
-                <div class="settings-tab" data-target="tab2" style="flex:1; padding:10px; text-align:center; cursor:pointer; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">設定2 (表示/他)</div>
+                <div class="settings-tab" data-target="tab2" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">設定2 (表示)</div>
+                <div class="settings-tab" data-target="tab3" style="flex:1; padding:10px; text-align:center; cursor:pointer; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent;">テスト</div>
             </div>
 
             <div style="padding: 15px; max-height: 70vh; overflow-y: auto;">
@@ -65,13 +66,7 @@ window.SettingsPanel = class SettingsPanel {
                         </div>
                     </div>
 
-                    <!-- テストモード設定 -->
-                    <div style="margin-bottom:15px;">
-                        <div style="display:flex; align-items:center;">
-                            <input type="checkbox" id="testModeCheckbox" style="margin-right:8px; cursor:pointer; width:16px; height:16px;">
-                            <label for="testModeCheckbox" style="cursor:pointer; user-select:none;">テストモード（通信停止ボタン表示）</label>
-                        </div>
-                    </div>
+
 
                     <!-- Cloudflare Settings -->
                     <div style="margin-top: 15px; border-top: 2px solid #eee; padding-top: 15px; background:#fcfcfc; padding:10px; border-radius:5px;">
@@ -126,11 +121,33 @@ window.SettingsPanel = class SettingsPanel {
                                 空欄（非表示）
                             </label>
                         </div>
+                        </div>
+                    </div>
+
+                    <!-- ギフトマーカー設定 -->
+                    <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">ギフトマーカー設定</h3>
+                        <div style="display:flex; align-items:center;">
+                            <label style="margin-right:10px;">表示時間(秒):</label>
+                            <input type="number" id="giftMarkerDurationInput" value="20" min="1" max="3600" style="width: 60px; padding:4px; border:1px solid #ccc; border-radius:3px; text-align:center;">
+                        </div>
+                    </div>
+
+                    </div>
+                </div>
+
+                <!-- ============================ TAB 3 (TEST) ============================ -->
+                <div id="tab3" class="settings-content" style="display:none;">
+                    
+                    <!-- 通信制御 -->
+                    <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">通信制御</h3>
+                        <button id="settingsPauseBtn" style="width:100%; padding:10px; background:#FF5722; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">通信を停止する</button>
                     </div>
 
                     <!-- テスト実行 -->
-                    <div id="testButtons" style="display:none; border-top:1px solid #ddd; padding-top:10px;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">テスト実行</h3>
+                    <div id="testButtons" style="padding-top:10px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">テストデータ生成</h3>
                         
                         <div style="margin-bottom:10px; display: flex; gap: 5px;">
                             <input type="text" id="testCommentInput" placeholder="カスタムコメントを入力" style="flex: 1; padding: 5px; width: auto;">
