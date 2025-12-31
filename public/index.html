@@ -2938,10 +2938,10 @@
                 item.count += g.n;
                 item.time = Date.now();
 
-                // タイムスタンプ更新（20秒ルールのリセット）
+                // タイムスタンプ更新（20秒以内の強調表示）
                 if (gt !== 2) {
                     item.div.dataset.receivedAt = now;
-                    item.div.classList.remove("old-gift-border"); // 更新時はボーダーを消す
+                    item.div.classList.add("old-gift-border"); // 更新時はボーダーを表示（復活）
                 }
 
                 // ギフト履歴に追加（更新時も）
@@ -3101,10 +3101,11 @@
 
             if (gt !== 2) {
                 div.dataset.receivedAt = Date.now();
+                div.classList.add("old-gift-border"); // 新規作成時はボーダーを表示
             }
         }
 
-        // 有料ギフトの20秒経過チェック
+        // 有料ギフトの20秒経過チェック（20秒以内は表示、過ぎたら消す）
         setInterval(() => {
             const now = Date.now();
             const container = document.getElementById("paidGift");
@@ -3114,7 +3115,7 @@
             for (let item of items) {
                 const receivedAt = parseInt(item.dataset.receivedAt);
                 if (receivedAt) {
-                    if (now - receivedAt >= 20000) {
+                    if (now - receivedAt < 20000) {
                         if (!item.classList.contains("old-gift-border")) {
                             item.classList.add("old-gift-border");
                         }
