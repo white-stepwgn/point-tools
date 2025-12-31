@@ -122,7 +122,6 @@ window.SettingsPanel = class SettingsPanel {
                             </label>
                         </div>
                         </div>
-                    </div>
 
                     <!-- ギフトマーカー設定 -->
                     <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
@@ -134,7 +133,6 @@ window.SettingsPanel = class SettingsPanel {
                     </div>
 
                     </div>
-                </div>
 
                 <!-- ============================ TAB 3 (TEST) ============================ -->
                 <div id="tab3" class="settings-content" style="display:none;">
