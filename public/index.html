@@ -3244,6 +3244,9 @@
         }
 
         function updateHighValueDisplay(userId, userName, avatarId, userData) {
+            // モードが 'show_10k'（高額ギフト表示）でない場合は表示更新しない
+            if (commentSettings.footerMode !== 'show_10k') return;
+
             const container = document.getElementById("highValueGiftContainer");
             const itemId = `high-value-${userId}`;
             let itemDiv = document.getElementById(itemId);
