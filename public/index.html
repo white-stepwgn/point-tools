@@ -167,6 +167,70 @@
             margin-top: 0;
         }
 
+        /* ルームリンク関連 */
+        .room-links-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        #roomNameSpan {
+            font-weight: bold;
+            color: #1a237e !important;
+            background: rgba(33, 150, 243, 0.1);
+            padding: 3px 15px;
+            border-radius: 20px;
+            border-bottom: 2px solid #2196F3;
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        #roomNameSpan:hover {
+            background: rgba(33, 150, 243, 0.2);
+        }
+
+        #roomLinksDropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 180px;
+            padding: 5px 0;
+            overflow: hidden;
+        }
+
+        .room-link-item {
+            display: block;
+            padding: 10px 15px;
+            color: #333;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.1s;
+        }
+
+        .room-link-item:hover {
+            background: #f0f0f0;
+            color: #2196F3;
+        }
+
+        .room-link-item:not(:last-child) {
+            border-bottom: 1px solid #eee;
+        }
+
         .bookmark-btn {
             cursor: pointer;
             font-size: 1.1em;
@@ -183,9 +247,8 @@
         }
 
         .bookmark-btn.active {
-            opacity: 1;
-            color: #FFD700;
-            text-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+            opacity: 1 !important;
+            color: #ff9800 !important;
         }
 
         /* しおりモーダル */
@@ -394,6 +457,28 @@
 
         #statusSpan.connected {
             color: green;
+        }
+
+        /* 管理者お知らせアニメーション */
+        @keyframes noticeBlink {
+            0% {
+                opacity: 1;
+                border-color: #ffb74d;
+            }
+
+            50% {
+                opacity: 0.7;
+                border-color: #ff9800;
+            }
+
+            100% {
+                opacity: 1;
+                border-color: #ffb74d;
+            }
+        }
+
+        .admin-notice-blink {
+            animation: noticeBlink 2s infinite;
         }
 
         /* アラームモーダル */
@@ -1272,10 +1357,23 @@
             <label>Room ID: <input type="text" id="roomInput" placeholder="例: 000000" autocomplete="off"></label>
             <button id="switchRoom">接続</button>
             <span id="statusSpan" class="disconnected">Status: 待機中</span>
-            <span id="roomNameSpan"
-                style="font-weight:bold; color:#1a237e; background:rgba(33,150,243,0.1); padding:3px 15px; border-radius:20px; border-bottom:2px solid #2196F3; max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 5px;">🏠
-                Room: -</span>
+            <div class="room-links-container" id="roomLinksTrigger" style="cursor: pointer; user-select: none;">
+                <span id="roomNameSpan">🏠 Room: -</span>
+                <span id="roomLinksHint"
+                    style="display: none; margin-left: 8px; font-size: 0.85em; color: #666; font-weight: bold; vertical-align: middle;">👈️PF・FRへ</span>
+                <div id="roomLinksDropdown">
+                    <a href="#" id="roomProfileLink" class="room-link-item" target="_blank">👤 プロフィールページへ</a>
+                    <a href="#" id="roomFanRoomLink" class="room-link-item" target="_blank">💬 ファンルームページへ</a>
+                </div>
+            </div>
             <button id="toggleSettings" style="font-size:0.9em; cursor:pointer; padding: 2px 8px;">設定</button>
+
+            <!-- 管理者からのお知らせ -->
+            <span id="adminNoticeSpan" class="admin-notice-blink"
+                style="display:none; margin-left:15px; background:#fff3e0; border:2px solid #ffb74d; color:#e65100; padding:3px 12px; border-radius:6px; font-size:0.9em; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:500px;">
+                📢 <span id="adminNoticeText"></span>
+            </span>
+
             <div style="flex:1;"></div>
 
             <!-- Zoom Controls -->
@@ -1310,7 +1408,7 @@
             </span>
 
             <span id="currentLiveStartedAtSpan"
-                style="margin-left:15px; font-size:0.9em; color:#666; font-weight:bold;">未配信</span>
+                style="margin-left:20px; font-size:0.9em; color:#666; font-weight:bold;">未配信</span>
             <span id="currentLiveElapsedSpan"
                 style="margin-left:8px; font-size:0.9em; color:#666; font-weight:bold;">経過時間: -</span>
 
@@ -1362,8 +1460,10 @@
                 </div>
             </h3>
             <div id="bookmarkList"></div>
-            <div style="text-align:center; padding: 10px; color: #999; font-size: 0.8em;">
-                クリックで該当コメントまでジャンプします
+            <div
+                style="text-align:center; padding: 10px; color: #777; font-size: 0.8em; border-top: 1px solid #eee; background: #fafafa; border-radius: 0 0 12px 12px;">
+                <div style="font-weight:bold; color: #555;">💡 クリックで該当コメントまでジャンプします</div>
+                <div style="margin-top: 4px; color: #999;">※しおりはブラウザを閉じても保存されます</div>
             </div>
         </div>
 
@@ -1455,6 +1555,61 @@
         let startedAt = null;
         let hbInterval = null;
         let reconnectTimeout = null;
+
+        // サーバー接続数管理用
+        let serverSocket = null;
+        function initServerConnection() {
+            if (serverSocket) return;
+            // ページと同じホスト・ポートの /ws に接続
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            serverSocket = new WebSocket(wsUrl);
+            serverSocket.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'connection_count') {
+                        // ヘッダーの表示を更新
+                        const elHeader = document.getElementById("serverConnValue");
+                        if (elHeader) elHeader.textContent = data.count;
+                        // 設定パネル内の表示を更新
+                        const elSettings = document.getElementById("settingsServerConnValue");
+                        if (elSettings) elSettings.textContent = data.count;
+                    }
+                    else if (data.type === 'admin_notice') {
+                        const noticeSpan = document.getElementById("adminNoticeSpan");
+                        const noticeText = document.getElementById("adminNoticeText");
+                        if (data.notice && data.notice.trim() !== "") {
+                            noticeText.textContent = "管理者からのお知らせ：" + data.notice;
+                            noticeSpan.style.display = "inline-block";
+                        } else {
+                            noticeSpan.style.display = "none";
+                        }
+                    }
+                } catch (err) { }
+            };
+            serverSocket.onclose = () => {
+                serverSocket = null;
+                setTimeout(initServerConnection, 5000); // 5秒後に再接続試行
+            };
+            serverSocket.onerror = () => {
+                if (serverSocket) serverSocket.close();
+            };
+        }
+        initServerConnection();
+
+        // 管理者お知らせ送信イベント
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'sendAdminNoticeBtn') {
+                const input = document.getElementById("adminNoticeInput");
+                const notice = input.value;
+                if (serverSocket && serverSocket.readyState === WebSocket.OPEN) {
+                    serverSocket.send(JSON.stringify({ type: 'send_admin_notice', notice: notice }));
+                    // input.value = ""; // クリアはあえてしない（確認のため）
+                } else {
+                    alert("サーバーに接続されていません。再試行してください。");
+                }
+            }
+        });
 
         // 高額ギフトユーザー集計 { userId: { totalPoints, totalCount, bestGift: {id, point, name}, gifts: { giftId: count } } }
         const userHighValueData = {};
@@ -2040,56 +2195,47 @@
                     // create element (Simplified version of createHighValueGiftElement)
                     // Actually, better to just call updateHighValueGiftDisplay with dummy data? No.
                     // Let's copy the creation logic or Refactor.
-                    // For now, let's just clear. The next gift will trigger update, OR we can rely on existing DOM if we didn't clear it???
-                    // Problem: switching "show_event" -> "show_10k" requires restoring DOM.
-                    // Re-building the DOM from `userHighValueData` is the correct approach.
-
                     const el = document.createElement("div");
-                    el.className = "high-value-gift-item";
-                    el.id = `hv-user-${uid}`;
-                    el.dataset.userId = uid;
-                    el.dataset.userName = data.userName; // attributes needed
+                    el.id = `high-value-${uid}`;
+                    const points = data.totalPoints;
+                    let borderClass = "silver";
+                    if (points >= 30000) borderClass = "gold";
+                    el.className = `high-value-gift-item ${borderClass}`;
 
                     const topDiv = document.createElement("div");
                     topDiv.className = "high-value-gift-top";
 
                     const avatar = document.createElement("img");
-                    avatar.className = "high-value-avatar";
-                    avatar.src = `https://static.showroom-live.com/image/avatar/${data.avatarId}.png?v=80`;
-                    // Fallback/Error handling omitted for brevity, logic exists in main function
+                    avatar.className = "avatar";
+                    avatar.src = `https://image.showroom-cdn.com/showroom-prod/image/avatar/${data.avatarId}.png`;
+                    avatar.title = data.userName;
 
                     const giftIcon = document.createElement("img");
-                    giftIcon.className = "high-value-gift-icon";
-                    giftIcon.src = `https://static.showroom-live.com/image/gift/${data.bestGift.id}_m.png?v=1`;
+                    giftIcon.className = "gift";
+                    giftIcon.src = `https://static.showroom-live.com/image/gift/${data.bestGift.id}_s.png?v=7`;
+                    giftIcon.title = data.bestGift.name;
 
                     topDiv.appendChild(avatar);
                     topDiv.appendChild(giftIcon);
 
-                    const lowerDiv = document.createElement("div");
-                    lowerDiv.className = "high-value-gift-lower";
-
-                    const nameDiv = document.createElement("div");
-                    nameDiv.className = "high-value-user-name";
-                    nameDiv.textContent = data.userName;
-
-                    const pointDiv = document.createElement("div");
-                    pointDiv.className = "high-value-points";
-                    pointDiv.textContent = `${Math.floor(data.totalPoints).toLocaleString()}pt`;
-
-                    lowerDiv.appendChild(nameDiv);
-                    lowerDiv.appendChild(pointDiv);
+                    const countSpan = document.createElement("span");
+                    countSpan.className = "count";
+                    countSpan.textContent = `${Math.floor(points).toLocaleString()}pt`;
 
                     el.appendChild(topDiv);
-                    el.appendChild(lowerDiv);
+                    el.appendChild(countSpan);
 
                     // Click event
-                    el.onclick = () => showGiftHistory(uid, data.userName);
+                    el.style.cursor = "pointer";
+                    el.onclick = (e) => {
+                        showHighValuePopup(e, uid, data.userName, data.avatarId, data);
+                    };
 
                     container.appendChild(el);
                 }
             });
+            sortHighValueItems(); // 表示後にソートして位置を確定
         }
-
 
 
 
@@ -2588,6 +2734,8 @@
             const div = document.createElement("div");
             div.id = commentId;
             div.className = "comment-item";
+            div.dataset.u = c.u;
+            div.dataset.cm = c.cm;
             div.style.display = "flex";
             div.style.alignItems = "flex-start";   // 上揃え
             div.style.marginBottom = "5px";
@@ -2704,7 +2852,14 @@
 
         // しおり関連機能
         function toggleBookmark(c, elementId, iconEl) {
+            // 履歴から保存しようとした際、もし画面上に同じコメントがあればIDを取得
+            if (!elementId) {
+                const onScreen = document.querySelector(`.comment-item[data-u="${c.u}"][data-cm="${c.cm.replace(/"/g, '&quot;')}"]`);
+                if (onScreen) elementId = onScreen.id;
+            }
+
             const index = bookmarks.findIndex(b => b.u === c.u && b.cm === c.cm);
+            let isActive = false;
             if (index === -1) {
                 // 追加
                 bookmarks.push({
@@ -2715,13 +2870,50 @@
                     cm: c.cm,
                     time: Date.now()
                 });
-                if (iconEl) iconEl.classList.add("active");
+                isActive = true;
             } else {
                 // 削除
                 bookmarks.splice(index, 1);
-                if (iconEl) iconEl.classList.remove("active");
+                isActive = false;
             }
             localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+            // 表示されている全ての該当アイコンを更新
+            updateAllBookmarkIcons(c.u, c.cm, isActive);
+        }
+
+        // 画面上の全ての「しおり」アイコンの表示を同期させる
+        function updateAllBookmarkIcons(userId, commentText, isActive) {
+            // コメント欄のアイコン
+            const commentItems = document.querySelectorAll(`.comment-item[data-u="${userId}"][data-cm="${commentText.replace(/"/g, '&quot;')}"]`);
+            commentItems.forEach(item => {
+                const icon = item.querySelector(".bookmark-btn");
+                if (icon) {
+                    if (isActive) icon.classList.add("active");
+                    else icon.classList.remove("active");
+                }
+            });
+
+            // 履歴モーダル内のアイコン
+            const historyModal = document.getElementById("commentHistoryModal");
+            if (historyModal.classList.contains("show") && historyModal.getAttribute("data-user-id") == userId) {
+                const historyItems = document.querySelectorAll(".history-item");
+                historyItems.forEach(item => {
+                    const text = item.querySelector(".history-text")?.textContent;
+                    if (text === commentText) {
+                        const icon = item.querySelector(".bookmark-btn");
+                        if (icon) {
+                            if (isActive) {
+                                icon.classList.add("active");
+                                icon.style.opacity = "1";
+                            } else {
+                                icon.classList.remove("active");
+                                icon.style.opacity = "0.4";
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         function showBookmarkList() {
@@ -2736,7 +2928,7 @@
                 [...bookmarks].reverse().forEach(b => {
                     const item = document.createElement("div");
                     item.className = "bookmark-item";
-                    item.onclick = () => jumpToComment(b.id);
+                    item.onclick = () => jumpToComment(b);
 
                     const avatar = document.createElement("img");
                     avatar.className = "bookmark-item-avatar";
@@ -2758,7 +2950,13 @@
 
                     const time = document.createElement("div");
                     time.className = "bookmark-item-time";
-                    time.textContent = new Date(b.time).toLocaleTimeString();
+                    const date = new Date(b.time);
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    const hh = String(date.getHours()).padStart(2, '0');
+                    const mm = String(date.getMinutes()).padStart(2, '0');
+                    time.textContent = `${y}/${m}/${d} ${hh}:${mm}`;
 
                     const remove = document.createElement("span");
                     remove.className = "bookmark-item-remove";
@@ -2797,8 +2995,14 @@
             // 削除した瞬間に一覧を全部更新するのは重いかも。次回表示時や再描画で対応。
         }
 
-        function jumpToComment(elementId) {
-            const target = document.getElementById(elementId);
+        function jumpToComment(bookmark) {
+            let target = document.getElementById(bookmark.id);
+
+            // IDで見つからない場合、ユーザーIDと内容で画面内を再捜索
+            if (!target) {
+                target = document.querySelector(`.comment-item[data-u="${bookmark.u}"][data-cm="${bookmark.cm.replace(/"/g, '&quot;')}"]`);
+            }
+
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 // 強調表示
@@ -2808,7 +3012,7 @@
                     target.style.background = originalBg;
                 }, 2000);
             } else {
-                alert("該当コメントはすでに削除されているか、読み込まれていません。");
+                alert("該当コメントは現在の表示一覧には見つかりませんでした。\n（読み込み制限で消えたか、ページ更新によりリセットされた可能性があります）");
             }
             // モーダルを閉じる
             document.getElementById("bookmarkModal").style.display = "none";
@@ -3002,7 +3206,28 @@
 
                     const timeDiv = document.createElement("div");
                     timeDiv.className = "history-time";
+                    timeDiv.style.display = "flex";
+                    timeDiv.style.alignItems = "center";
+                    timeDiv.style.gap = "5px";
                     timeDiv.textContent = item.time.toLocaleTimeString();
+
+                    const bookmarkIcon = document.createElement("span");
+                    bookmarkIcon.textContent = "🔖";
+                    bookmarkIcon.className = "bookmark-btn";
+                    bookmarkIcon.style.fontSize = "1.1em";
+                    bookmarkIcon.style.opacity = "0.4";
+                    bookmarkIcon.style.padding = "0";
+                    // すでにしおり登録されているかチェック
+                    if (bookmarks.some(b => b.u === userId && b.cm === item.text)) {
+                        bookmarkIcon.classList.add("active");
+                        bookmarkIcon.style.opacity = "1";
+                    }
+                    bookmarkIcon.onclick = (e) => {
+                        e.stopPropagation();
+                        const commentData = { u: userId, ac: item.name, av: item.avatar, cm: item.text };
+                        toggleBookmark(commentData, null, bookmarkIcon);
+                    };
+                    timeDiv.appendChild(bookmarkIcon);
 
                     const textDiv = document.createElement("div");
                     textDiv.className = "history-text";
@@ -3060,7 +3285,7 @@
             // アバターIDを持つ最新の履歴を探す
             const latestAvItem = history.find(h => h.av);
             if (latestAvItem) {
-                avatarHtml = `<img src="https://static.showroom-live.com/image/avatar/${latestAvItem.av}.png?v=80" style="width:30px; height:30px; border-radius:50%; margin-right:8px; vertical-align:middle; border:1px solid #ddd;">`;
+                avatarHtml = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${latestAvItem.av}.png" style="width:30px; height:30px; border-radius:50%; margin-right:8px; vertical-align:middle; border:1px solid #ddd;">`;
             }
             // もし履歴にアバターがない場合、既存のロジックでアバター取得を試みるか、
             // または引数でavatarIdを受け取るように変更するのがベストだが、今回は履歴データから復元
@@ -3397,8 +3622,8 @@
 
             // 無料ギフト（gt===2）
             if (gt === 2) {
-                if (g.g === 3000421 || g.g === 3000421) {
-                    // 星（ID:3000421, 3000421）
+                if (g.g >= 3000421 && g.g <= 3000425) {
+                    // 星（ID:3000421-3000425）
                     containerId = "freeStar";
                     giftMap = freeStarMap;
                 } else {
@@ -3741,10 +3966,15 @@
                 userHighValueData[userId] = {
                     totalPoints: 0,
                     totalCount: 0, // 全ギフトの合計個数
+                    userName: userName,
+                    avatarId: avatarId,
                     bestGift: { id: 0, point: -1, name: "" },
                     gifts: {} // giftId: { count: 0, points: 0, info: ... }
                 };
             }
+            // ユーザー名やアバターが変わる可能性があるため、常に最新を上書き
+            userHighValueData[userId].userName = userName;
+            userHighValueData[userId].avatarId = avatarId;
 
             const userData = userHighValueData[userId];
             userData.totalPoints += pointsThisGift;
@@ -4147,7 +4377,7 @@
             currentEventData = null;
             if (window.eventRankingManager) {
                 window.eventRankingManager.reset();
-                window.eventRankingManager.init(roomId);
+                // window.eventRankingManager.init(roomId); // REMOVE: User settings (applyFooterMode) should decide this
             }
 
             try {
@@ -4171,9 +4401,16 @@
                     }
 
                     if (profileJson.room_name) {
-                        document.getElementById("roomNameSpan").textContent = "Room: " + profileJson.room_name;
+                        const roomName = profileJson.room_name;
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: " + roomName;
+                        document.getElementById("roomLinksHint").style.display = "inline";
+
+                        // リンクを更新
+                        document.getElementById("roomProfileLink").href = `https://www.showroom-live.com/room/profile?room_id=${roomId}`;
+                        document.getElementById("roomFanRoomLink").href = `https://www.showroom-live.com/room/fan_club?room_id=${roomId}`;
                     } else {
-                        document.getElementById("roomNameSpan").textContent = "Room: -";
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: -";
+                        document.getElementById("roomLinksHint").style.display = "none";
                     }
 
                     // イベント情報取得・更新
@@ -4205,12 +4442,14 @@
                     updateEventPoints(roomId);
                     eventPointInterval = setInterval(() => updateEventPoints(roomId), 60000);
 
+                    // 接続時に強制的にモードが変わらないよう、現在の設定を維持して適用
                     applyFooterMode();
                 } catch (e) {
                     console.warn("room_profile取得失敗:", e);
                     startedAt = null;
                     document.getElementById("currentLiveStartedAtSpan").textContent = "未配信";
                     document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+                    applyFooterMode(); // エラー時も設定されたモードを適用
                 }
 
                 // ギフトリスト取得
@@ -4274,8 +4513,31 @@
                         document.getElementById("currentLiveStartedAtSpan").textContent =
                             `配信開始: ${startedAtDate.toLocaleString()}`;
                     }
-                    if (obj.main_name) document.getElementById("roomNameSpan").textContent = "Room: " + obj.main_name;
+                    if (obj.main_name) {
+                        const roomName = obj.main_name;
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: " + roomName;
+                        document.getElementById("roomLinksHint").style.display = "inline";
+
+                        // リンクを更新
+                        document.getElementById("roomProfileLink").href = `https://www.showroom-live.com/room/profile?room_id=${roomId}`;
+                        document.getElementById("roomFanRoomLink").href = `https://www.showroom-live.com/room/fan_club?room_id=${roomId}`;
+                    }
                 };
+
+                // Room Name クリックでメニュー表示
+                const roomTrigger = document.getElementById("roomLinksTrigger");
+                const roomDropdown = document.getElementById("roomLinksDropdown");
+
+                roomTrigger.onclick = (e) => {
+                    e.stopPropagation();
+                    const isShow = roomDropdown.style.display === "block";
+                    roomDropdown.style.display = isShow ? "none" : "block";
+                };
+
+                // 画面クリックでメニューを閉じる
+                document.addEventListener("click", () => {
+                    roomDropdown.style.display = "none";
+                });
 
                 socket.onclose = (event) => {
                     console.log("WebSocket closed:", event.code, event.reason);

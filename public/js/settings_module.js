@@ -148,6 +148,27 @@ window.SettingsPanel = class SettingsPanel {
                         
                         <pre id="cfTestResult" style="margin-top:8px; padding:8px; background:#333; color:#0f0; border-radius:4px; font-size:0.8em; white-space:pre-wrap; max-height:100px; overflow-y:auto; display:none;"></pre>
                     </div>
+
+                    <!-- Admin Notice Input -->
+                    <div style="margin-top: 15px; padding:10px; border-top:1px solid #eee; background: rgba(255,152,0,0.05); border-radius:5px;">
+                        <div style="font-weight:bold; margin-bottom:5px; color:#e65100;">管理者お知らせ送信</div>
+                        <div style="display:flex; gap:5px;">
+                            <input type="text" id="adminNoticeInput" placeholder="お知らせ内容を入力..." style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;">
+                            <button id="sendAdminNoticeBtn" style="padding:6px 12px; background:#ff9800; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:0.85em;">送信</button>
+                        </div>
+                        <div style="font-size:0.75em; color:#888; margin-top:4px;">※空欄で送信するとお知らせを消去できます</div>
+                    </div>
+
+                    <!-- Server Connection Info -->
+                    <div style="margin-top: 15px; padding:10px; border-top:1px solid #eee; background: rgba(76,175,80,0.05); border-radius:5px;">
+                        <div style="font-weight:bold; margin-bottom:5px; color:#1b5e20;">サーバー接続情報</div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.2em;">💻</span>
+                            <span style="font-size:0.9em; color:#444;">現在の同時接続数:</span>
+                            <span id="settingsServerConnValue" style="font-weight:bold; color:#1b5e20; font-size:1.1em; border-bottom:2px solid #4CAF50;">1</span>
+                            <span style="font-size:0.9em; color:#444;">人</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ============================ TAB 3 (TEST) ============================ -->
@@ -215,22 +236,22 @@ window.SettingsPanel = class SettingsPanel {
                                 <img src="https://static.showroom-live.com/image/gift/800003_s.png?v=7" class="test-gift-icon-new" data-id="800003" data-type="1" title="有料ギフト(800003)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <img src="https://static.showroom-live.com/image/gift/21_s.png?v=7" class="test-gift-icon-new" data-id="21" data-type="1" title="有料ギフト(21)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <img src="https://static.showroom-live.com/image/gift/3000349_s.png?v=7" class="test-gift-icon-new" data-id="3000349" data-type="1" title="有料ギフト(3000349)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/1601_s.png?v=7" class="test-gift-icon-new" data-id="1601" data-type="2" title="ギフトID 1601" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/1601_s.png?v=7" class="test-gift-icon-new" data-id="1601" data-type="1" title="ギフトID 1601" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <img src="https://static.showroom-live.com/image/gift/3000752_s.png?v=7" class="test-gift-icon-new" data-id="3000752" data-type="2" title="無料ギフト(3000752)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/800093_s.png?v=7" class="test-gift-icon-new" data-id="800093" data-type="2" title="ギフトID 800093" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/800093_s.png?v=7" class="test-gift-icon-new" data-id="800093" data-type="1" title="ギフトID 800093" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <img src="https://static.showroom-live.com/image/gift/18_s.png?v=7" class="test-gift-icon-new" data-id="18" data-type="1" title="有料ギフト(18)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <img src="https://static.showroom-live.com/image/gift/800072_s.png?v=7" class="test-gift-icon-new" data-id="800072" data-type="1" title="有料ギフト(800072)" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001128_s.png?v=7" class="test-gift-icon-new" data-id="3001128" data-type="2" title="ギフトID 3001128" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001129_s.png?v=7" class="test-gift-icon-new" data-id="3001129" data-type="2" title="ギフトID 3001129" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001130_s.png?v=7" class="test-gift-icon-new" data-id="3001130" data-type="2" title="ギフトID 3001130" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001131_s.png?v=7" class="test-gift-icon-new" data-id="3001131" data-type="2" title="ギフトID 3001131" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001132_s.png?v=7" class="test-gift-icon-new" data-id="3001132" data-type="2" title="ギフトID 3001132" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001133_s.png?v=7" class="test-gift-icon-new" data-id="3001133" data-type="2" title="ギフトID 3001133" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001134_s.png?v=7" class="test-gift-icon-new" data-id="3001134" data-type="2" title="ギフトID 3001134" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001135_s.png?v=7" class="test-gift-icon-new" data-id="3001135" data-type="2" title="ギフトID 3001135" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001136_s.png?v=7" class="test-gift-icon-new" data-id="3001136" data-type="2" title="ギフトID 3001136" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001137_s.png?v=7" class="test-gift-icon-new" data-id="3001137" data-type="2" title="ギフトID 3001137" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                                <img src="https://static.showroom-live.com/image/gift/3001138_s.png?v=7" class="test-gift-icon-new" data-id="3001138" data-type="2" title="ギフトID 3001138" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001128_s.png?v=7" class="test-gift-icon-new" data-id="3001128" data-type="1" title="ギフトID 3001128" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001129_s.png?v=7" class="test-gift-icon-new" data-id="3001129" data-type="1" title="ギフトID 3001129" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001130_s.png?v=7" class="test-gift-icon-new" data-id="3001130" data-type="1" title="ギフトID 3001130" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001131_s.png?v=7" class="test-gift-icon-new" data-id="3001131" data-type="1" title="ギフトID 3001131" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001132_s.png?v=7" class="test-gift-icon-new" data-id="3001132" data-type="1" title="ギフトID 3001132" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001133_s.png?v=7" class="test-gift-icon-new" data-id="3001133" data-type="1" title="ギフトID 3001133" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001134_s.png?v=7" class="test-gift-icon-new" data-id="3001134" data-type="1" title="ギフトID 3001134" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001135_s.png?v=7" class="test-gift-icon-new" data-id="3001135" data-type="1" title="ギフトID 3001135" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001136_s.png?v=7" class="test-gift-icon-new" data-id="3001136" data-type="1" title="ギフトID 3001136" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001137_s.png?v=7" class="test-gift-icon-new" data-id="3001137" data-type="1" title="ギフトID 3001137" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
+                                <img src="https://static.showroom-live.com/image/gift/3001138_s.png?v=7" class="test-gift-icon-new" data-id="3001138" data-type="1" title="ギフトID 3001138" style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
                                 <!-- 追加アイコンは必要に応じてここに -->
                             </div>
                         </div>

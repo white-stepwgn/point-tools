@@ -600,10 +600,8 @@ class RoomMonitor {
                     accumulateUserIdentity(obj.u, obj.ac);
                 }
 
-                if (obj.g > 1000) {
-                    if (obj.g) {
-                        this.processGift(obj);
-                    }
+                if (obj.g) {
+                    this.processGift(obj);
                 }
             } catch (e) {
                 // Ignore parse errors
@@ -1631,6 +1629,11 @@ async function updateEventRankingFromWindow1() {
 
     if (urlKey) {
         eventUrl = `https://www.showroom-live.com/event/${urlKey}`;
+        if (monitor1.currentEvent.block_id) {
+            eventUrl += `?block_id=${monitor1.currentEvent.block_id}`;
+            // Also ensure we handle cases where urlKey might already have query params (unlikely for urlKey but good practice?)
+            // Usually urlKey is just the path part like 'event_name'.
+        }
     } else if (monitor1.currentEvent.event_url) {
         eventUrl = monitor1.currentEvent.event_url;
     } else if (monitor1.currentEvent.event_id) {
@@ -1641,7 +1644,7 @@ async function updateEventRankingFromWindow1() {
         // 何もない場合もルームプロフィールへ
         eventUrl = `https://www.showroom-live.com/room/profile?room_id=${monitor1.roomId}`;
     }
-    console.log("[EventRanking] Generated URL:", eventUrl, monitor1.currentEvent);
+    // console.log("[EventRanking] Generated URL:", eventUrl, monitor1.currentEvent);
 
     // ヘッダー部分を先に描画（リンク追加）
     const headerHtml = `
@@ -1651,76 +1654,37 @@ async function updateEventRankingFromWindow1() {
                 <a href="${eventUrl}" target="_blank" style="color:#2196F3; text-decoration:underline;">${eventName || '不明'}</a>
             </div>
             ${eventImage ? `<a href="${eventUrl}" target="_blank"><img src="${eventImage}" style="max-height:50px; display:block; margin:0 auto 5px auto; border-radius:4px; border:0;"></a>` : ''}
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#eee; padding:2px 5px; font-size:0.85em; font-weight:bold;">
-                <span>参加者</span>
-                <button onclick="updateEventRankingFromWindow1()" style="font-size:0.8em; cursor:pointer; background:#fff; border:1px solid #ccc; border-radius:3px; padding:1px 5px;">再取得</button>
-            </div>
         </div>
     `;
 
     // リスト部分のプレースホルダー
     const listPlaceHolder = `<div id="event-ranking-list-body" style="padding:10px; color:#666; text-align:center;">ランキング読み込み中...</div>`;
 
-    eventRankingDiv.innerHTML = headerHtml + listPlaceHolder;
-    const listBody = document.getElementById('event-ranking-list-body');
+    // --- Use EventRankingManager for Table ---
 
-    // API取得
-    try {
-        const urlKeyParam = urlKey ? `&url_key=${urlKey}` : '';
-        const res = await fetch(`/api/event_ranking?event_id=${eventId}${urlKeyParam}`);
+    // Ensure structure exists: Header + Container for Manager
+    if (!document.getElementById('mw-event-header')) {
+        eventRankingDiv.innerHTML = `<div id="mw-event-header">${headerHtml}</div>`;
+        let rankingContainer = document.createElement('div');
+        rankingContainer.id = 'mw-event-ranking-container';
+        rankingContainer.style.flex = '1';
+        rankingContainer.style.overflow = 'hidden';
+        eventRankingDiv.appendChild(rankingContainer);
+    } else {
+        // Update header content
+        document.getElementById('mw-event-header').innerHTML = headerHtml;
+    }
 
-        let json;
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        json = await res.json();
+    // Initialize Manager if needed
+    if (!window.mwEventRankingManager) {
+        window.mwEventRankingManager = new EventRankingManager('mw-event-ranking-container', { compact: true });
+    }
 
-        if (!json.ranking || !Array.isArray(json.ranking)) {
-            if (listBody) listBody.innerHTML = '<div style="padding:5px;">ランキングデータなし</div>';
-            return;
-        }
-
-        // リスト構築
-        if (listBody) {
-            listBody.style.textAlign = 'left';
-            listBody.style.padding = '0';
-            let html = '';
-            json.ranking.slice(0, 50).forEach(item => {
-                // すでに開いているかチェック
-                let isOpen = false;
-                let openIndex = -1;
-                for (let i = 0; i < monitors.length; i++) {
-                    if (monitors[i].roomId == item.room.room_id) {
-                        isOpen = true;
-                        openIndex = i + 1;
-                        break;
-                    }
-                }
-
-                html += `
-                <div style="display:flex; align-items:center; padding:3px 5px; border-bottom:1px solid #ddd; ${isOpen ? 'background:#fffde7;' : ''}" onclick="requestAssignRoom(${item.room.room_id}, '${item.room.room_name}', ${item.point})">
-                    <div style="width:25px; text-align:right; font-weight:bold; margin-right:5px; color:${item.rank <= 3 ? '#d00' : '#333'};">${item.rank}</div>
-                    <div style="flex:1; overflow:hidden;">
-                        <div style="font-size:0.85em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:bold;">${item.room.room_name}</div>
-                        <div style="font-size:0.8em; color:#666;">${item.point.toLocaleString()} pt</div>
-                    </div>
-                    ${isOpen ? `<div style="font-size:0.7em; background:#333; color:white; padding:1px 3px; border-radius:2px; margin-left:3px;">W${openIndex}</div>` : ''}
-                </div>
-                `;
-            });
-            listBody.innerHTML = html;
-        }
-
-    } catch (e) {
-        console.error("Event ranking fetch error:", e);
-        if (listBody) {
-            // エラーを目立たないようにし、ブラウザで確認を促す
-            listBody.innerHTML = `
-                <div style="padding:10px; color:#666; text-align:center; font-size:0.85em;">
-                    <a href="${eventUrl}" target="_blank" style="padding:5px 10px; background:#ddd; color:#333; text-decoration:none; border-radius:4px; border:1px solid #ccc; display:inline-block;">
-                       詳細をブラウザで確認 ↗
-                    </a>
-                    <div style="margin-top:5px; font-size:0.8em; color:#999;">(データ自動取得不可)</div>
-                </div>`;
-        }
+    // Initialize or Update
+    if (window.mwEventRankingManager.currentRoomId !== monitor1.roomId) {
+        window.mwEventRankingManager.init(monitor1.roomId);
+    } else {
+        window.mwEventRankingManager.update();
     }
 }
 

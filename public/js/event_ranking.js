@@ -3,9 +3,9 @@
  * Handles fetching and rendering of Showroom Event Ranking data.
  */
 class EventRankingManager {
-    constructor(containerId) {
+    constructor(containerId, options) {
         this.containerId = containerId;
-        this.currentRoomId = null;
+        this.options = options || {};
         this.currentRoomId = null;
         this.currentEventId = null;
         this.currentBlockId = null;
@@ -76,6 +76,15 @@ class EventRankingManager {
             if (jsonPoints.event.event_url) {
                 const match = jsonPoints.event.event_url.match(/\/event\/([^\?]+)/);
                 if (match) this.currentUrlKey = match[1];
+
+                // Extract block_id from URL if not provided directly
+                if (!this.currentBlockId) {
+                    const blockMatch = jsonPoints.event.event_url.match(/[?&]block_id=(\d+)/);
+                    if (blockMatch) {
+                        this.currentBlockId = blockMatch[1];
+                        console.log(`[EventRanking] Extracted block_id from URL: ${this.currentBlockId}`);
+                    }
+                }
             }
 
             // Extract current room's rank and points from Pattern A
@@ -111,6 +120,78 @@ class EventRankingManager {
                     const jsonRankRetry = await resRankRetry.json();
                     if (jsonRankRetry) {
                         this.rankingData = jsonRankRetry.ranking || jsonRankRetry.block_ranking_list || [];
+                    }
+                }
+            }
+
+            // Check if all points are 0 (Anomaly check)
+            const allZero = this.rankingData.length > 0 && this.rankingData.every(item => {
+                const p = item.point !== undefined ? item.point : (item.room ? item.room.point : 0);
+                return p === 0;
+            });
+
+            if (allZero) {
+                console.warn("[EventRanking] All points are 0. Attempting to fetch individual room points...");
+
+                // Create valid tasks
+                const validItems = this.rankingData.filter(item => {
+                    return item.room_id || (item.room ? item.room.room_id : null) || item.id;
+                });
+
+                // Fetch in parallel (be careful with rate limits if list is huge)
+                const tasks = validItems.map(async (item) => {
+                    const rId = item.room_id || (item.room ? item.room.room_id : null) || item.id;
+
+                    try {
+                        const res = await fetch(`/api/event_points?room_id=${rId}`);
+                        const json = await res.json();
+                        if (json.event && json.event.ranking && json.event.ranking.point !== undefined) {
+                            // Update item in place
+                            item.point = json.event.ranking.point;
+                            if (item.room) item.room.point = json.event.ranking.point;
+                        }
+                    } catch (e) {
+                        // suppress error
+                    }
+                });
+
+                await Promise.all(tasks);
+                // Sort again because points might have changed ranking order?
+                this.rankingData.sort((a, b) => {
+                    const pA = a.point !== undefined ? a.point : (a.room ? a.room.point : 0);
+                    const pB = b.point !== undefined ? b.point : (b.room ? b.room.point : 0);
+                    return pB - pA;
+                });
+            }
+
+            // 3. Sync current room ranking with the fetched list
+            // Because event_and_support API might return stale or non-block ranking
+            if (this.rankingData.length > 0) {
+                const selfItem = this.rankingData.find(item => {
+                    const rId = item.room_id || (item.room ? item.room.room_id : null) || item.id;
+                    return parseInt(rId) === parseInt(this.currentRoomId);
+                });
+
+                if (selfItem) {
+                    const currentPoint = selfItem.point !== undefined ? selfItem.point : (selfItem.room ? selfItem.room.point : 0);
+
+                    if (!this.currentRoomRanking) {
+                        this.currentRoomRanking = {};
+                    }
+
+                    this.currentRoomRanking.rank = selfItem.rank;
+                    this.currentRoomRanking.point = currentPoint;
+
+                    if (selfItem.gap !== undefined) {
+                        this.currentRoomRanking.gap = selfItem.gap;
+                    } else if (selfItem.rank > 1) {
+                        const prevItem = this.rankingData.find(ri => ri.rank === selfItem.rank - 1);
+                        if (prevItem) {
+                            const prevPoint = prevItem.point !== undefined ? prevItem.point : (prevItem.room ? prevItem.room.point : 0);
+                            this.currentRoomRanking.next_rank = selfItem.rank - 1;
+                            this.currentRoomRanking.next_point = prevPoint;
+                            this.currentRoomRanking.gap = prevPoint - currentPoint;
+                        }
                     }
                 }
             }
@@ -226,7 +307,10 @@ class EventRankingManager {
                     <tr style="background: ${rowBg}; border-bottom: 1px solid #eee;">
                         <td style="padding: 6px; text-align: center; font-weight: bold;">${item.rank}</td>
                         <td style="padding: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${roomName}">
-                            <a href="https://www.showroom-live.com/room/profile?room_id=${roomId}" target="_blank" style="text-decoration: none; color: #333; display: block; width: 100%; overflow: hidden; text-overflow: ellipsis;">${roomName}</a>
+                            ${typeof requestAssignRoom === 'function' ?
+                        `<a href="javascript:void(0)" onclick="requestAssignRoom(${roomId}, '${roomName.replace(/'/g, "\\'")}', ${point})" style="text-decoration: none; color: #333; display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; cursor: pointer;">${roomName}</a>` :
+                        `<a href="https://www.showroom-live.com/room/profile?room_id=${roomId}" target="_blank" style="text-decoration: none; color: #333; display: block; width: 100%; overflow: hidden; text-overflow: ellipsis;">${roomName}</a>`
+                    }
                         </td>
                         <td style="padding: 6px 10px; text-align: right; font-weight: bold; font-family: monospace;">${point.toLocaleString()}</td>
                         <td style="padding: 6px 10px; text-align: right; font-family: monospace;">${gapHtml}</td>
@@ -244,21 +328,29 @@ class EventRankingManager {
         `;
 
         // Create Flex Container
-        const flexContainer = `
-            <div style="display: flex; height: 100%; overflow: hidden;">
-                <!-- Sidebar -->
-                <div style="width: 220px; background: #fff; border-right: 1px solid #ddd; padding: 10px; overflow-y: auto; flex-shrink: 0; box-sizing: border-box;">
-                    ${this.renderSidebarContent()}
-                </div>
-                
-                <!-- Main Content (Header + Table) -->
-                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        // Create Flex Container or simple output
+        if (this.options.compact) {
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                     ${html}
                 </div>
-            </div>
-        `;
-
-        container.innerHTML = flexContainer;
+            `;
+        } else {
+            const flexContainer = `
+                <div style="display: flex; height: 100%; overflow: hidden;">
+                    <!-- Sidebar -->
+                    <div style="width: 220px; background: #fff; border-right: 1px solid #ddd; padding: 10px; overflow-y: auto; flex-shrink: 0; box-sizing: border-box;">
+                        ${this.renderSidebarContent()}
+                    </div>
+                    
+                    <!-- Main Content (Header + Table) -->
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                        ${html}
+                    </div>
+                </div>
+            `;
+            container.innerHTML = flexContainer;
+        }
     }
 
     renderSidebarContent() {
@@ -272,7 +364,7 @@ class EventRankingManager {
                 <img src="${this.eventInfo.image}" style="width: 100%; border-radius: 4px; border: 1px solid #eee;">
             </div>
             <div style="font-weight: bold; font-size: 0.9em; margin-bottom: 8px; line-height: 1.4;">
-                <a href="${this.eventInfo.event_url}" target="_blank" style="text-decoration: none; color: #333;">${this.eventInfo.event_name}</a>
+                <a href="${this.eventInfo.event_url}${this.currentBlockId ? `?block_id=${this.currentBlockId}` : ''}" target="_blank" style="text-decoration: none; color: #333;">${this.eventInfo.event_name}</a>
             </div>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 8px 0;">
             <div style="font-size: 0.8em; color: #666;">

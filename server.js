@@ -325,10 +325,16 @@ app.get("/api/event_ranking", async (req, res) => {
     const eventId = req.query.event_id;
     const urlKey = req.query.url_key; // Added for scraping fallback
 
+    const blockId = req.query.block_id;
+
     if (!eventId) return res.status(400).json({ error: "event_id required" });
 
     try {
-        const url = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}`;
+        let url = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}`;
+        if (blockId) {
+            url += `&block_id=${blockId}`;
+            console.log(`[Proxy] Using block_id for main ranking: ${blockId}`);
+        }
         console.log(`[Proxy] Fetching event ranking: ${url}`);
         const r = await fetch(url);
 
@@ -415,14 +421,32 @@ app.get('/api/events_ranking', async (req, res) => {
     if (!eventId) return res.status(400).json({ error: "event_id required" });
 
     try {
+        // Attempt 0: Block ranking API (Priority if blockIs exists)
+        if (blockId) {
+            let urlBlock = `https://www.showroom-live.com/api/event/block_ranking?event_id=${eventId}&page=1&block_id=${blockId}`;
+            console.log(`[Proxy] Fetching block ranking (Priority): ${urlBlock}`);
+            const r0 = await fetch(urlBlock);
+            if (r0.ok) {
+                const data = await r0.json();
+                if (data.block_ranking_list && data.block_ranking_list.length > 0) {
+                    return res.json(data);
+                }
+            }
+        }
+
         // Attempt 1: Standard event ranking API
-        const urlRanking = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}${roomId ? "&room_id=" + roomId : ""}`;
+        let urlRanking = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}${roomId ? "&room_id=" + roomId : ""}`;
+        if (blockId) {
+            // Some events might accept block_id in standard api too?
+            urlRanking += `&block_id=${blockId}`;
+        }
         console.log(`[Proxy] Fetching standard ranking: ${urlRanking}`);
         const r1 = await fetch(urlRanking);
 
         if (r1.ok) {
             const data = await r1.json();
             if (data.ranking && data.ranking.length > 0) return res.json(data);
+            // If block event, sometimes standard API returns empty ranking but 200 OK.
         }
 
         // Attempt 2: Events ranking API (Older style but used for some events)
@@ -435,22 +459,16 @@ app.get('/api/events_ranking', async (req, res) => {
             if (data.ranking || data.block_ranking_list) return res.json(data);
         }
 
-        // Attempt 3: Block ranking API (Required for block events)
-        let urlBlock = `https://www.showroom-live.com/api/event/block_ranking?event_id=${eventId}&page=1`;
-        if (blockId) {
-            urlBlock += `&block_id=${blockId}`;
-            console.log(`[Proxy] Using provided block_id: ${blockId}`);
-        } else {
-            console.log(`[Proxy] No block_id provided, trying base block ranking url (might fail)`);
-        }
-
-        console.log(`[Proxy] Fetching block ranking fallback: ${urlBlock}`);
-        const r3 = await fetch(urlBlock);
-
-        if (r3.ok) {
-            const data = await r3.json();
-            // This API returns { block_ranking_list: [...] }
-            return res.json(data);
+        // Attempt 3: Block ranking API (Fallback if blockId was not provided initially or failed)
+        // If we already tried blockId in attempt 0, we can skip or try without block_id if that makes sense (unlikely).
+        if (!blockId) {
+            let urlBlock = `https://www.showroom-live.com/api/event/block_ranking?event_id=${eventId}&page=1`;
+            console.log(`[Proxy] Fetching block ranking fallback (No ID): ${urlBlock}`);
+            const r3 = await fetch(urlBlock);
+            if (r3.ok) {
+                const data = await r3.json();
+                return res.json(data);
+            }
         }
 
         // Attempt 4: Scraping Fallback (last resort for Quest events etc)
@@ -619,6 +637,35 @@ const server = app.listen(PORT, () => {
 // ===============================
 const wss = new WebSocketServer({ server, path: "/ws" });
 
+// 同時接続数管理
+let currentAdminNotice = ""; // 管理者からのお知らせを保持
+
+function broadcastConnectionCount() {
+    if (!wss) return;
+    const count = wss.clients.size;
+    const msg = JSON.stringify({ type: 'connection_count', count: count });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(msg);
+        }
+    });
+}
+
+function broadcastAdminNotice(notice) {
+    currentAdminNotice = notice;
+    const msg = JSON.stringify({ type: 'admin_notice', notice: notice });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(msg);
+        }
+    });
+}
+
+// APIでも取得できるようにする
+app.get("/api/server_status", (req, res) => {
+    res.json({ connection_count: wss ? wss.clients.size : 0 });
+});
+
 // ===============================
 // Feature: Avatar Search API
 // ===============================
@@ -710,15 +757,22 @@ wss.on("connection", (clientSocket) => {
                 currentKey = data.broadcast_key;
                 connectUpstream(currentKey);
             }
-            // Client sends PING or other control messages
-            else if (data.type === 'ping') {
-                // Respond or ignore (heartbeat handles keepalive)
+            // 管理者からのお知らせ送信リクエスト
+            else if (data.type === 'send_admin_notice') {
+                console.log("[Proxy] Broadcasting admin notice:", data.notice);
+                broadcastAdminNotice(data.notice);
             }
 
         } catch (e) {
             console.log("Browser msg parse error:", e.message);
         }
     });
+
+    // 接続時にカウントとお知らせを通知
+    broadcastConnectionCount();
+    if (currentAdminNotice) {
+        clientSocket.send(JSON.stringify({ type: 'admin_notice', notice: currentAdminNotice }));
+    }
 
     clientSocket.on("close", () => {
         console.log("Browser disconnected");
@@ -728,6 +782,8 @@ wss.on("connection", (clientSocket) => {
         if (upstreamWS) {
             try { upstreamWS.close(); } catch { }
         }
+        // 切断時にカウントを通知
+        broadcastConnectionCount();
     });
 
     clientSocket.on("error", (e) => {
