@@ -82,6 +82,10 @@ window.SettingsPanel = class SettingsPanel {
                                 参加中イベント情報
                             </label>
                             <label style="cursor: pointer; display:flex; align-items:center;">
+                                <input type="radio" name="footerDisplayMode" value="show_ranking" style="margin-right:8px;">
+                                イベントランキング
+                            </label>
+                            <label style="cursor: pointer; display:flex; align-items:center;">
                                 <input type="radio" name="footerDisplayMode" value="none" style="margin-right:8px;">
                                 空欄（非表示）
                             </label>
@@ -133,7 +137,10 @@ window.SettingsPanel = class SettingsPanel {
                         </div>
                         
                         <!-- Status Box -->
-                        <div style="display:flex; justify-content:flex-end;">
+                        <div style="display:flex; justify-content:flex-end; gap: 10px; align-items: center;">
+                             <div style="font-size: 0.8em; color: #888;">
+                                 <span id="hbSpan">HB: 10s</span> | <span id="kpSpan">KeyPoll: 5s</span>
+                             </div>
                              <div style="width:180px; padding: 6px; background: #fff; border-radius: 4px; border: 1px solid #ddd; text-align:center;">
                                 <span id="cfStatus" style="font-size: 0.9em; font-weight: bold; color:#d00;">停止中</span>
                             </div>
@@ -141,7 +148,7 @@ window.SettingsPanel = class SettingsPanel {
                         
                         <pre id="cfTestResult" style="margin-top:8px; padding:8px; background:#333; color:#0f0; border-radius:4px; font-size:0.8em; white-space:pre-wrap; max-height:100px; overflow-y:auto; display:none;"></pre>
                     </div>
-                    </div>
+                </div>
 
                 <!-- ============================ TAB 3 (TEST) ============================ -->
                 <div id="tab3" class="settings-content" style="display:none;">

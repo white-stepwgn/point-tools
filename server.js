@@ -405,6 +405,116 @@ app.get("/api/event_ranking", async (req, res) => {
     }
 });
 
+// New Endpoint for Pattern B Ranking (Detailed/Block Ranking)
+app.get('/api/events_ranking', async (req, res) => {
+    const eventId = req.query.event_id;
+    const roomId = req.query.room_id;
+    const blockId = req.query.block_id;
+    const urlKey = req.query.url_key; // Added for scraping fallback
+
+    if (!eventId) return res.status(400).json({ error: "event_id required" });
+
+    try {
+        // Attempt 1: Standard event ranking API
+        const urlRanking = `https://www.showroom-live.com/api/event/ranking?event_id=${eventId}${roomId ? "&room_id=" + roomId : ""}`;
+        console.log(`[Proxy] Fetching standard ranking: ${urlRanking}`);
+        const r1 = await fetch(urlRanking);
+
+        if (r1.ok) {
+            const data = await r1.json();
+            if (data.ranking && data.ranking.length > 0) return res.json(data);
+        }
+
+        // Attempt 2: Events ranking API (Older style but used for some events)
+        const urlEvents = `https://www.showroom-live.com/api/events/${eventId}/ranking${roomId ? "?room_id=" + roomId : ""}`;
+        console.log(`[Proxy] Fetching events ranking fallback: ${urlEvents}`);
+        const r2 = await fetch(urlEvents);
+
+        if (r2.ok) {
+            const data = await r2.json();
+            if (data.ranking || data.block_ranking_list) return res.json(data);
+        }
+
+        // Attempt 3: Block ranking API (Required for block events)
+        let urlBlock = `https://www.showroom-live.com/api/event/block_ranking?event_id=${eventId}&page=1`;
+        if (blockId) {
+            urlBlock += `&block_id=${blockId}`;
+            console.log(`[Proxy] Using provided block_id: ${blockId}`);
+        } else {
+            console.log(`[Proxy] No block_id provided, trying base block ranking url (might fail)`);
+        }
+
+        console.log(`[Proxy] Fetching block ranking fallback: ${urlBlock}`);
+        const r3 = await fetch(urlBlock);
+
+        if (r3.ok) {
+            const data = await r3.json();
+            // This API returns { block_ranking_list: [...] }
+            return res.json(data);
+        }
+
+        // Attempt 4: Scraping Fallback (last resort for Quest events etc)
+        if (urlKey) {
+            console.log(`[Proxy] Attempting scrape fallback for: ${urlKey}`);
+            const pageUrl = `https://www.showroom-live.com/event/${urlKey}`;
+            const pageRes = await fetch(pageUrl);
+            if (pageRes.ok) {
+                const html = await pageRes.text();
+
+                // Simple Regex Scraping based on standard layout
+                const ranking = [];
+                // Quest event ranking structure usually has data-room-id
+
+                const items = html.split('data-room-id="');
+                items.shift(); // remove header
+
+                items.forEach((chunk, index) => {
+                    const idMatch = chunk.match(/^(\d+)"/);
+                    if (!idMatch) return;
+                    const roomId = parseInt(idMatch[1]);
+
+                    // Extract Name
+                    let name = "Unknown";
+                    const nameMatch = chunk.match(/alt="([^"]+)"/);
+                    if (nameMatch) name = nameMatch[1];
+                    else {
+                        const nameMatch2 = chunk.match(/listcardinfo-main-text[^>]*>([\s\S]*?)<\//);
+                        if (nameMatch2) name = nameMatch2[1].trim();
+                    }
+
+                    // Extract Rank
+                    const rank = index + 1;
+
+                    // Point
+                    let point = 0;
+                    const pointMatch = chunk.match(/(\d{1,3}(,\d{3})*)\s*pt/); // 1,234 pt
+                    if (pointMatch) point = parseInt(pointMatch[1].replace(/,/g, ''));
+
+                    ranking.push({
+                        rank: rank,
+                        point: point,
+                        room: {
+                            room_id: roomId,
+                            room_name: name
+                        }
+                    });
+                });
+
+                if (ranking.length > 0) {
+                    console.log(`[Proxy] Scraped ${ranking.length} items.`);
+                    return res.json({ ranking: ranking });
+                }
+            }
+        }
+
+        // All failed
+        res.status(404).json({ error: "Ranking data not found in all attempts" });
+    } catch (e) {
+        console.error("[Proxy] events_ranking error:", e);
+        res.status(500).json({ error: "Failed to fetch detailed event ranking" });
+    }
+});
+
 // ===============================
 // Feature: Scrape Campaign Ranking
 app.get('/api/campaign_ranking', async (req, res) => {

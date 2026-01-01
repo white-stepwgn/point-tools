@@ -156,11 +156,137 @@
             font-size: 0.9em;
             margin-bottom: 2px;
             text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
         }
 
         #comment .comment-text {
             margin-left: 0;
             margin-top: 0;
+        }
+
+        .bookmark-btn {
+            cursor: pointer;
+            font-size: 1.1em;
+            opacity: 0.4;
+            transition: all 0.2s;
+            padding: 2px 5px;
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        .bookmark-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .bookmark-btn.active {
+            opacity: 1;
+            color: #FFD700;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* しおりモーダル */
+        #bookmarkModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 20px;
+            z-index: 2200;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            width: 450px;
+            max-height: 80vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            flex-direction: column;
+        }
+
+        #bookmarkModal.show {
+            display: flex;
+        }
+
+        #bookmarkModal h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #FFD700;
+            padding-bottom: 10px;
+        }
+
+        #bookmarkList {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .bookmark-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 5px solid #FFD700;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .bookmark-item:hover {
+            background: #f0f0f0;
+        }
+
+        .bookmark-item-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .bookmark-item-content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .bookmark-item-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 2px;
+        }
+
+        .bookmark-item-text {
+            font-size: 1em;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bookmark-item-time {
+            font-size: 0.75em;
+            color: #999;
+            margin-left: 10px;
+        }
+
+        .bookmark-item-remove {
+            color: #ff5252;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 5px;
+        }
+
+        .bookmark-item-remove:hover {
+            color: #ff0000;
         }
 
         /* ギフト */
@@ -1146,11 +1272,11 @@
             <label>Room ID: <input type="text" id="roomInput" placeholder="例: 000000" autocomplete="off"></label>
             <button id="switchRoom">接続</button>
             <span id="statusSpan" class="disconnected">Status: 待機中</span>
-            <span id="hbSpan">HB: 10s</span>
-            <span id="kpSpan">KeyPoll: 5s</span>
-            <span id="roomNameSpan">Room: -</span>
-            <span id="currentLiveStartedAtSpan">未配信</span>
-            <span id="currentLiveElapsedSpan">経過時間: -</span>
+            <span id="roomNameSpan"
+                style="font-weight:bold; color:#1a237e; background:rgba(33,150,243,0.1); padding:3px 15px; border-radius:20px; border-bottom:2px solid #2196F3; max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 5px;">🏠
+                Room: -</span>
+            <button id="toggleSettings" style="font-size:0.9em; cursor:pointer; padding: 2px 8px;">設定</button>
+            <div style="flex:1;"></div>
 
             <!-- Zoom Controls -->
             <div style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
@@ -1169,15 +1295,24 @@
             <span id="viewerCountSpan"
                 style="margin-left:15px; font-weight:bold; color:#555; display:flex; align-items:center;">
                 <span style="color:#ffd700; margin-right:3px;">⭐️</span>
-                <span id="viewerCountValue">-</span>
+                <span id="viewerCountValue"
+                    style="min-width: 60px; text-align: right; border-bottom: 2px solid #888; padding: 0 4px; border-radius: 2px; background: rgba(0,0,0,0.03);">
+                    - </span>
             </span>
 
             <!-- 接続後ギフトポイント合計 -->
             <span id="sessionGiftPointsSpan"
                 style="margin-left:15px; font-weight:bold; color:#555; display:flex; align-items:center;">
                 <span style="color:#e91e63; margin-right:3px;">🎁</span>
-                <span id="sessionGiftPointsValue">0</span> pt
+                <span id="sessionGiftPointsValue"
+                    style="min-width: 100px; text-align: right; display: inline-block; border-bottom: 2px solid #888; padding: 0 4px; border-radius: 2px; background: rgba(0,0,0,0.03);">0</span>
+                pt
             </span>
+
+            <span id="currentLiveStartedAtSpan"
+                style="margin-left:15px; font-size:0.9em; color:#666; font-weight:bold;">未配信</span>
+            <span id="currentLiveElapsedSpan"
+                style="margin-left:8px; font-size:0.9em; color:#666; font-weight:bold;">経過時間: -</span>
 
             <button id="pauseBtn" style="background:#ff9800; color:white; margin-left:10px; display:none;">⏸
                 通信停止</button>
@@ -1192,8 +1327,10 @@
                     style="font-size:0.8em; background:#4CAF50; color:white; padding:5px 10px; border:none; border-radius:3px; cursor:pointer;">コメ抜チェック</button>
                 <h2 style="margin:0; font-size:1.2em;">コメント</h2>
                 <div style="display:flex; gap:5px;">
+                    <button id="showBookmarksBtn"
+                        style="font-size:0.8em; cursor:pointer; background:#FFD700; border:1px solid #e6c300; border-radius:3px; padding:5px 8px; font-weight:bold;">🔖
+                        しおり</button>
                     <button id="scrollTopBtn" style="font-size:0.8em; cursor:pointer;">先頭へ</button>
-                    <button id="toggleSettings" style="font-size:0.8em; cursor:pointer;">設定</button>
                 </div>
             </div>
             <div id="comment"></div>
@@ -1209,6 +1346,24 @@
             <div class="modal-footer" id="giftHistoryFooter">
                 <span id="giftHistoryUserId">ID: -</span>
                 <span id="giftHistoryTotal" style="color:#d00; font-size:1.1em;">合計: 0pt</span>
+            </div>
+        </div>
+
+        <!-- しおりモーダル -->
+        <div id="bookmarkModal">
+            <h3>
+                <span>🔖 しおり一覧</span>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button id="clearBookmarksBtn"
+                        style="font-size:0.7em; cursor:pointer; background:#ff5252; color:white; border:none; padding:4px 8px; border-radius:4px; font-weight:bold;">🗑
+                        全削除</button>
+                    <button class="close-btn" id="closeBookmarkModal"
+                        style="cursor: pointer; font-size: 1.5em; color: #999; background: none; border: none; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">×</button>
+                </div>
+            </h3>
+            <div id="bookmarkList"></div>
+            <div style="text-align:center; padding: 10px; color: #999; font-size: 0.8em;">
+                クリックで該当コメントまでジャンプします
             </div>
         </div>
 
@@ -1287,6 +1442,7 @@
         </div>
     </div>
 
+    <script src="/js/event_ranking.js"></script>
     <script>
         // ブラウザのオートフィル対策：初期化時に強制クリア
         (function () {
@@ -1303,12 +1459,24 @@
         // 高額ギフトユーザー集計 { userId: { totalPoints, totalCount, bestGift: {id, point, name}, gifts: { giftId: count } } }
         const userHighValueData = {};
 
+        // イベントランキング管理
+        window.eventRankingManager = new EventRankingManager("highValueGiftContainer");
+
         // アラーム用
         let alarmTime = null; // "HH:MM" string
         let alarmTriggered = false;
 
         // t18メッセージ履歴 [{ message, color, time }]
         const t18MessageHistory = [];
+
+        // ブックマーク履歴 [{ id, u, ac, av, cm, time }]
+        let bookmarks = [];
+        try {
+            const savedBookmarks = localStorage.getItem('sr_comment_bookmarks');
+            if (savedBookmarks) bookmarks = JSON.parse(savedBookmarks);
+        } catch (e) { }
+
+        let commentCounter = 0;
 
         // 時計更新
         setInterval(() => {
@@ -1482,6 +1650,15 @@
         };
 
         // 設定
+        let currentRoomId = null;
+        let currentEventData = null;
+        let currentEventPoints = { initial: null, current: null, lastUpdated: null };
+        let currentEventId = null;
+        let eventPointInterval = null;
+        let isPaused = false;
+        let sessionTotalGiftPoints = 0;
+        let connectionTargetId = null; // Race condition prevention
+
         let commentSettings = { size: 14, color: "#000000", muteEnabled: false, muteSymbol: "", defaultRoomId: "", footerMode: "show_10k", giftMarkerDuration: 20 };
 
         // Load settings from localStorage
@@ -1553,9 +1730,6 @@
         // コメント重複チェック用 (comment_idまたはハッシュ値を保存)
         const receivedComments = new Set();
         let commentLogInterval = null;
-        let currentRoomId = null;
-        let isPaused = false; // 通信一時停止フラグ
-        let sessionTotalGiftPoints = 0; // 接続後のギフトポイント合計
 
 
         // アバタールーム検索機能 (API経由でsearch_avatar.pyを実行)
@@ -1705,8 +1879,12 @@
 
                 let point = null;
 
-                // 1. 通常のランキングイベント
-                if (json.ranking && json.ranking.point !== undefined) {
+                // 1. 通常のランキングイベント (event.ranking.point)
+                if (json.event && json.event.ranking && json.event.ranking.point !== undefined) {
+                    point = Number(json.event.ranking.point);
+                }
+                // 1b. 通常のランキングイベント (ranking.point - rare case or direct ranking API)
+                else if (json.ranking && json.ranking.point !== undefined) {
                     point = Number(json.ranking.point);
                 }
                 // 2. クエスト形式イベント (event.quest.support.current_point)
@@ -1736,9 +1914,7 @@
             }
         }
 
-        let currentEventData = null; // Initialize currentEventData
-        let currentEventPoints = { initial: null, current: null, lastUpdated: null }; // イベントポイント情報
-        let eventPointInterval = null; // ポイント定期更新用タイマー
+        // ポイント情報更新用タイマー
 
         // フッター表示モード適用関数
         function applyFooterMode() {
@@ -1756,7 +1932,9 @@
             if (mode === "none") {
                 container.style.display = "none";
                 resizer.style.display = "none";
+                if (window.eventRankingManager) eventRankingManager.stop();
             } else if (mode === "show_event") {
+                // eventRankingManager.stop(); // Do NOT stop manager here as it might be used in the sidebar
                 if (currentEventData) {
                     // イベント情報表示
                     container.style.flexDirection = "column";
@@ -1820,9 +1998,25 @@
                 } else {
                     container.innerHTML = "<div style='padding:10px; color:#999;'>イベント情報がありません</div>";
                 }
+            } else if (mode === "show_ranking") {
+                if (currentRoomId) {
+                    // イベントランキング表示
+                    container.style.flexDirection = "column";
+                    container.style.alignItems = "stretch";
+                    container.style.justifyContent = "flex-start";
+                    container.style.padding = "0";
+                    container.style.backgroundColor = "#fff";
+                    container.style.cursor = "default";
+                    container.onclick = null;
+
+                    eventRankingManager.init(currentRoomId);
+                } else {
+                    container.innerHTML = "<div style='padding:10px; color:#999;'>ルームに接続してください</div>";
+                }
             } else {
                 // show_10k
                 container.style.flexDirection = "row";
+                if (eventRankingManager) eventRankingManager.stop();
                 renderHighValueGiftsFromData();
             }
         }
@@ -2381,6 +2575,7 @@
             }
 
             // 通常のコメント表示
+            const commentId = `comment_${Date.now()}_${commentCounter++}`;
 
             // Check mute filter - only for normal comments
             if (commentSettings.muteEnabled && commentSettings.muteSymbol) {
@@ -2391,6 +2586,7 @@
             }
 
             const div = document.createElement("div");
+            div.id = commentId;
             div.className = "comment-item";
             div.style.display = "flex";
             div.style.alignItems = "flex-start";   // 上揃え
@@ -2399,12 +2595,7 @@
             div.style.padding = "2px 5px";
             div.style.borderRadius = "5px";
             div.style.boxShadow = "1px 1px 3px #aaa";
-            div.style.cursor = "pointer"; // クリック可能にする
-
-            // クリックで履歴表示
-            div.onclick = () => {
-                showCommentHistory(c.u, c.ac, c.av);
-            };
+            div.style.transition = "background 0.5s"; // ジャンプ時の視覚効果用
 
             // アバター画像
             const img = document.createElement("img");
@@ -2413,6 +2604,10 @@
             img.style.height = "40px";
             img.style.marginRight = "5px";
             img.style.flexShrink = "0";
+            img.onclick = (e) => {
+                e.stopPropagation();
+                showCommentHistory(c.u, c.ac, c.av);
+            };
 
             // コメント名・本文ラッパー
             const wrapperDiv = document.createElement("div");
@@ -2437,8 +2632,23 @@
                 nameSpan.appendChild(marker);
             }
 
-            const nameText = document.createTextNode(c.ac);
+            const nameText = document.createElement("span");
+            nameText.textContent = c.ac;
             nameSpan.appendChild(nameText);
+
+            // Bookmark button
+            const bookmarkIcon = document.createElement("span");
+            bookmarkIcon.textContent = "🔖";
+            bookmarkIcon.className = "bookmark-btn";
+            // すでにブックマークされているかチェック
+            if (bookmarks.some(b => b.u === c.u && b.cm === c.cm)) {
+                bookmarkIcon.classList.add("active");
+            }
+            bookmarkIcon.onclick = (e) => {
+                e.stopPropagation();
+                toggleBookmark(c, commentId, bookmarkIcon);
+            };
+            nameSpan.appendChild(bookmarkIcon);
 
             const textP = document.createElement("p");
             textP.className = "comment-text";
@@ -2452,8 +2662,7 @@
             div.appendChild(img);
             div.appendChild(wrapperDiv);
 
-            // コメントをクリック可能に
-            div.style.cursor = "pointer";
+            // コメントをクリック可能に（履歴表示）
             div.onclick = () => {
                 showCommentHistory(c.u, c.ac, c.av);
             };
@@ -2492,6 +2701,140 @@
 
             document.getElementById("comment").prepend(div);
         }
+
+        // しおり関連機能
+        function toggleBookmark(c, elementId, iconEl) {
+            const index = bookmarks.findIndex(b => b.u === c.u && b.cm === c.cm);
+            if (index === -1) {
+                // 追加
+                bookmarks.push({
+                    id: elementId,
+                    u: c.u,
+                    ac: c.ac,
+                    av: c.av,
+                    cm: c.cm,
+                    time: Date.now()
+                });
+                if (iconEl) iconEl.classList.add("active");
+            } else {
+                // 削除
+                bookmarks.splice(index, 1);
+                if (iconEl) iconEl.classList.remove("active");
+            }
+            localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+        }
+
+        function showBookmarkList() {
+            const modal = document.getElementById("bookmarkModal");
+            const listDiv = document.getElementById("bookmarkList");
+            listDiv.innerHTML = "";
+
+            if (bookmarks.length === 0) {
+                listDiv.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>しおりはありません</p>";
+            } else {
+                // 時間順（新しい順）
+                [...bookmarks].reverse().forEach(b => {
+                    const item = document.createElement("div");
+                    item.className = "bookmark-item";
+                    item.onclick = () => jumpToComment(b.id);
+
+                    const avatar = document.createElement("img");
+                    avatar.className = "bookmark-item-avatar";
+                    avatar.src = `https://image.showroom-cdn.com/showroom-prod/image/avatar/${b.av}.png`;
+
+                    const content = document.createElement("div");
+                    content.className = "bookmark-item-content";
+
+                    const name = document.createElement("div");
+                    name.className = "bookmark-item-name";
+                    name.textContent = b.ac;
+
+                    const text = document.createElement("div");
+                    text.className = "bookmark-item-text";
+                    text.textContent = b.cm;
+
+                    content.appendChild(name);
+                    content.appendChild(text);
+
+                    const time = document.createElement("div");
+                    time.className = "bookmark-item-time";
+                    time.textContent = new Date(b.time).toLocaleTimeString();
+
+                    const remove = document.createElement("span");
+                    remove.className = "bookmark-item-remove";
+                    remove.innerHTML = "×";
+                    remove.onclick = (e) => {
+                        e.stopPropagation();
+                        removeBookmark(b.u, b.cm);
+                        showBookmarkList(); // 再描画
+                    };
+
+                    item.appendChild(avatar);
+                    item.appendChild(content);
+                    item.appendChild(time);
+                    item.appendChild(remove);
+                    listDiv.appendChild(item);
+                });
+            }
+
+            modal.style.display = "flex";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function removeBookmark(userId, comment) {
+            bookmarks = bookmarks.filter(b => !(b.u === userId && b.cm === comment));
+            localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+            // コメント一覧のアイコンを物理的に更新（見つかれば）
+            const commentItems = document.querySelectorAll(".comment-item");
+            commentItems.forEach(item => {
+                const nameText = item.querySelector(".comment-name span")?.textContent;
+                const commentText = item.querySelector(".comment-text")?.textContent;
+                if (nameText === "" || !commentText) return; // nameTextはc.acなので注意
+                // 厳密なチェックは難しいが、とりあえずブックマークアイコンのactiveを外す処理を検討
+            });
+            // 実際は showComment 内で描画されるときに active が付くので、
+            // 削除した瞬間に一覧を全部更新するのは重いかも。次回表示時や再描画で対応。
+        }
+
+        function jumpToComment(elementId) {
+            const target = document.getElementById(elementId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 強調表示
+                const originalBg = target.style.background;
+                target.style.background = "#fff9c4"; // 薄い黄色
+                setTimeout(() => {
+                    target.style.background = originalBg;
+                }, 2000);
+            } else {
+                alert("該当コメントはすでに削除されているか、読み込まれていません。");
+            }
+            // モーダルを閉じる
+            document.getElementById("bookmarkModal").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        function clearBookmarks() {
+            if (confirm("すべてのしおりを削除してもよろしいですか？")) {
+                bookmarks = [];
+                localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+                // コメント一覧のアイコンからactiveクラスをすべて除去
+                document.querySelectorAll(".bookmark-btn.active").forEach(el => {
+                    el.classList.remove("active");
+                });
+
+                showBookmarkList(); // 一覧を更新
+            }
+        }
+
+        document.getElementById("clearBookmarksBtn").onclick = clearBookmarks;
+        document.getElementById("showBookmarksBtn").onclick = showBookmarkList;
+        document.getElementById("closeBookmarkModal").onclick = () => {
+            document.getElementById("bookmarkModal").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        };
 
         // t18メッセージモーダルのコンテンツを更新
         function updateT18ModalContent() {
@@ -3133,6 +3476,12 @@
                     if (countSpan) {
                         countSpan.textContent = `${item.count}個`;
                     }
+                    const priceSpan = textP.querySelector(".gift-unit-price");
+                    if (priceSpan && giftMasterData[g.g]) {
+                        const info = giftMasterData[g.g];
+                        const unit = info.free ? "pt" : "SG";
+                        priceSpan.textContent = `(@ ${info.point} ${unit})`;
+                    }
                 }
 
                 // 高額ギフトチェック（1回の投稿個数で計算）
@@ -3225,9 +3574,21 @@
             countSpan.className = "gift-count";
             countSpan.textContent = `${g.n}個`;
 
+            const priceSpan = document.createElement("span");
+            priceSpan.className = "gift-unit-price";
+            priceSpan.style.fontSize = "0.85em";
+            priceSpan.style.color = "#888";
+            priceSpan.style.marginLeft = "8px";
+            if (giftMasterData[g.g]) {
+                const info = giftMasterData[g.g];
+                const unit = info.free ? "pt" : "SG";
+                priceSpan.textContent = `(@ ${info.point} ${unit})`;
+            }
+
             textP.appendChild(giftImg);
             textP.appendChild(multiplySpan);
             textP.appendChild(countSpan);
+            textP.appendChild(priceSpan);
 
             contentDiv.appendChild(nameSpan);
             contentDiv.appendChild(textP);
@@ -3756,12 +4117,38 @@
         // 接続
         async function connectRoom(roomId) {
             if (!roomId) return;
+            // Set target immediately to invalidate previous in-flight calls
+            connectionTargetId = roomId;
+            currentRoomId = roomId; // Update global ID immediately to prevent races in applyFooterMode
+
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
 
             // リセット
             startedAt = null;
             document.getElementById("currentLiveStartedAtSpan").textContent = "未配信";
             document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+
+            // 既存の接続・タイマーを即座に停止
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+                socket = null;
+            }
+            if (eventPointInterval) {
+                clearInterval(eventPointInterval);
+                eventPointInterval = null;
+            }
+            if (window.viewerCountInterval) {
+                clearInterval(window.viewerCountInterval);
+                window.viewerCountInterval = null;
+            }
+
+            // イベント情報リセットとランキング初期化
+            currentEventData = null;
+            if (window.eventRankingManager) {
+                window.eventRankingManager.reset();
+                window.eventRankingManager.init(roomId);
+            }
 
             try {
                 setStatus("connecting");
@@ -3770,6 +4157,8 @@
                 try {
                     const profileRes = await fetch(`/room_profile?room_id=${roomId}`);
                     const profileJson = await profileRes.json();
+                    if (connectionTargetId !== roomId) return; // Stale check
+
                     if (profileJson.current_live_started_at) {
                         startedAt = profileJson.current_live_started_at * 1000;
                         const startedAtDate = new Date(startedAt);
@@ -3799,7 +4188,6 @@
                     }
 
                     // 視聴者数定期更新
-                    if (window.viewerCountInterval) clearInterval(window.viewerCountInterval);
                     updateViewerCount(roomId); // Pass roomId explicitly for immediate update
                     window.viewerCountInterval = setInterval(() => updateViewerCount(roomId), 60000);
 
@@ -3814,7 +4202,6 @@
 
                     currentEventPoints = { initial: null, current: null, lastUpdated: null };
 
-                    if (eventPointInterval) clearInterval(eventPointInterval);
                     updateEventPoints(roomId);
                     eventPointInterval = setInterval(() => updateEventPoints(roomId), 60000);
 
@@ -3852,18 +4239,12 @@
                 }
 
                 // コメントログポーリング開始
-                currentRoomId = roomId;
                 startCommentLogPolling(roomId);
 
                 const res = await fetch(`/get_broadcast_key?room_id=${roomId}`);
                 const json = await res.json();
                 if (!json.broadcast_key) { alert("broadcast_key取得失敗"); return; }
                 broadcastKey = json.broadcast_key;
-
-                if (socket) {
-                    socket.onclose = null; // 自動再接続のループ防止
-                    socket.close();
-                }
 
                 socket = new WebSocket("wss://online.showroom-live.com");
                 socket.onopen = () => {
@@ -3910,6 +4291,7 @@
 
 
             } catch (e) {
+                if (connectionTargetId !== roomId) return; // Don't reconnect if target changed
                 console.error(e);
                 setStatus("disconnected");
                 // 5秒後に再接続
