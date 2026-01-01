@@ -1203,7 +1203,7 @@
 
         <!-- ギフト履歴モーダル -->
         <div id="giftHistoryModal" class="modal">
-            <h3>ギフト履歴 - <span id="giftHistoryUser"></span></h3>
+            <h3><span id="giftHistoryUser"></span> のギフト履歴</h3>
             <button id="closeGiftHistory" style="position:absolute; top:10px; right:10px; cursor:pointer;">✕</button>
             <div id="giftHistoryList" style="max-height:400px; overflow-y:auto; margin-top:10px;"></div>
             <div class="modal-footer" id="giftHistoryFooter">
@@ -1557,6 +1557,63 @@
         let isPaused = false; // 通信一時停止フラグ
         let sessionTotalGiftPoints = 0; // 接続後のギフトポイント合計
 
+
+        // アバタールーム検索機能 (API経由でsearch_avatar.pyを実行)
+        window.searchAvatarRoom = async (avatarId) => {
+            if (!avatarId) {
+                alert("アバターIDが見つかりません");
+                return;
+            }
+            const aid = parseInt(avatarId);
+            if (isNaN(aid)) {
+                alert("無効なアバターIDです");
+                return;
+            }
+
+            // 検索中表示（ボタンのテキストを変えるなどのUX改善が可能だが、今回はAlert等で簡易対応も可。
+            // 実際は非同期なので何かインジケータがあったほうがいいが、window.openの挙動的に同期っぽく見せる。
+
+            try {
+                // 初期フォールバック（API通信前用）
+                let fallbackUrl = `https://www.sr-avatar.com/ava${Math.floor((aid - 1) / 100) * 100 + 1}.html`;
+
+                const res = await fetch(`/api/search_avatar?avatar_id=${aid}`);
+                if (!res.ok) {
+                    console.warn("Avatar Search API failed, using default fallback.");
+                    window.open(fallbackUrl, '_blank');
+                    return;
+                }
+
+                const json = await res.json();
+
+                // MakeAvatarなどの外部URL指定がある場合
+                if (json.external_url) {
+                    alert(json.error || "外部サイトへ移動します。");
+                    window.open(json.external_url, '_blank');
+                    return;
+                }
+
+                // APIが使用した正確な検索URLがあればそれをフォールバックとして採用
+                if (json.url || json.source_url) {
+                    fallbackUrl = json.url || json.source_url;
+                }
+
+                if (json.found && json.room_url) {
+                    // 特定成功 - 即座にルームを開く
+                    window.open(json.room_url, '_blank');
+                } else {
+                    // 見つからなかった場合 - 正しい一覧ページを開く
+                    console.warn(`Avatar room not found for ID ${aid}:`, json.error);
+                    window.open(fallbackUrl, '_blank');
+                }
+
+            } catch (e) {
+                console.error("Avatar search error:", e);
+                const pageStartNum = Math.floor((aid - 1) / 100) * 100 + 1;
+                const fallbackUrl = `https://www.sr-avatar.com/ava${pageStartNum}.html`;
+                window.open(fallbackUrl, '_blank');
+            }
+        };
 
         // ライブ配信状態チェック (配信終了検知用)
         async function checkLiveStatus(targetRoomId) {
@@ -2555,11 +2612,27 @@
             }
 
             // アバター付きでユーザー名を表示
-            if (avatarId) {
-                const avatarImg = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${avatarId}.png" style="width:30px; height:30px; vertical-align:middle; margin-right:8px; border-radius:50%;">`;
-                userSpan.innerHTML = avatarImg + userName;
+            let currentAvatarId = avatarId;
+
+            // 引数にアバターIDがない場合、履歴から探す
+            if (!currentAvatarId) {
+                const history = commentHistory[userId] || [];
+                const itemWithAvatar = history.find(h => h.avatar);
+                if (itemWithAvatar) {
+                    currentAvatarId = itemWithAvatar.avatar;
+                }
+            }
+
+            let searchBtnHtml = "";
+            if (currentAvatarId) {
+                searchBtnHtml = `<button onclick="searchAvatarRoom(${currentAvatarId})" style="margin-left:10px; font-size:0.75em; cursor:pointer; background:#eee; border:1px solid #ccc; padding:2px 6px; border-radius:4px; vertical-align:middle;">🔍 アバタールーム検索</button>`;
+            }
+
+            if (currentAvatarId) {
+                const avatarImg = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${currentAvatarId}.png" style="width:30px; height:30px; vertical-align:middle; margin-right:8px; border-radius:50%;">`;
+                userSpan.innerHTML = avatarImg + userName + searchBtnHtml;
             } else {
-                userSpan.textContent = userName;
+                userSpan.innerHTML = userName + searchBtnHtml; // アバター画像なしでもIDさえ履歴にあればボタン出す
             }
 
             listDiv.innerHTML = "";
@@ -2637,10 +2710,27 @@
                 window.dispatchEvent(new CustomEvent('resetDragState'));
             }
 
-            userSpan.textContent = userName;
+            // アバター画像とユーザー名を設定
+            // 履歴の最新アイテムからアバターを取得（あれば）
+            const history = giftHistory[userId] || [];
+            let avatarHtml = "";
+            // アバターIDを持つ最新の履歴を探す
+            const latestAvItem = history.find(h => h.av);
+            if (latestAvItem) {
+                avatarHtml = `<img src="https://static.showroom-live.com/image/avatar/${latestAvItem.av}.png?v=80" style="width:30px; height:30px; border-radius:50%; margin-right:8px; vertical-align:middle; border:1px solid #ddd;">`;
+            }
+            // もし履歴にアバターがない場合、既存のロジックでアバター取得を試みるか、
+            // または引数でavatarIdを受け取るように変更するのがベストだが、今回は履歴データから復元
+
+            let searchBtnHtml = "";
+            let latestAvId = latestAvItem ? latestAvItem.av : null;
+            if (latestAvId) {
+                searchBtnHtml = `<button onclick="searchAvatarRoom(${latestAvId})" style="margin-left:10px; font-size:0.75em; cursor:pointer; background:#eee; border:1px solid #ccc; padding:2px 6px; border-radius:4px; vertical-align:middle;">🔍 アバタールーム検索</button>`;
+            }
+
+            userSpan.innerHTML = avatarHtml + userName + searchBtnHtml;
             listDiv.innerHTML = "";
 
-            const history = giftHistory[userId] || [];
             if (history.length === 0) {
                 listDiv.innerHTML = "<p style='text-align:center; color:#999;'>ギフト履歴がありません</p>";
             } else {
@@ -2653,6 +2743,8 @@
                     const timeDiv = document.createElement("div");
                     timeDiv.className = "gift-history-time";
                     timeDiv.textContent = item.time.toLocaleTimeString();
+
+                    // リストアイテムごとのアバター表示は削除（上部に移動したため）
 
                     const giftDiv = document.createElement("div");
                     giftDiv.className = "gift-history-gift";
@@ -2851,9 +2943,10 @@
             let xOffset = 0;
             let yOffset = 0;
 
-            header.addEventListener("mousedown", dragStart);
-            document.addEventListener("mousemove", drag);
-            document.addEventListener("mouseup", dragEnd);
+            // ドラッグ機能を無効化（固定表示）
+            // header.addEventListener("mousedown", dragStart);
+            // document.addEventListener("mousemove", drag);
+            // document.addEventListener("mouseup", dragEnd);
 
             function dragStart(e) {
                 if (e.target.id === "closeSettings" || e.target.closest("#closeSettings")) {
@@ -3004,7 +3097,8 @@
                     giftId: g.g,
                     giftName: giftInfo ? giftInfo.name : `ギフトID:${g.g}`,
                     count: g.n,
-                    type: giftType
+                    type: giftType,
+                    av: g.av
                 });
                 if (giftHistory[g.u].length > 100) {
                     giftHistory[g.u].pop();
@@ -3083,7 +3177,8 @@
                 giftId: g.g,
                 giftName: giftInfo ? giftInfo.name : `ギフトID:${g.g}`,
                 count: g.n,
-                type: giftType
+                type: giftType,
+                av: g.av
             });
             // 最大100件まで保持
             if (giftHistory[g.u].length > 100) {

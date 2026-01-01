@@ -5,7 +5,7 @@ import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from 'cheerio';
 import path from "path";
-import { spawn } from "child_process";
+import { spawn, exec } from "child_process";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
@@ -508,6 +508,33 @@ const server = app.listen(PORT, () => {
 // WebSocket Relay（Browser → Node → Showroom）
 // ===============================
 const wss = new WebSocketServer({ server, path: "/ws" });
+
+// ===============================
+// Feature: Avatar Search API
+// ===============================
+app.get("/api/search_avatar", async (req, res) => {
+    const avatarId = req.query.avatar_id;
+    if (!avatarId) return res.status(400).json({ error: "avatar_id required" });
+
+    const scriptPath = path.join(__dirname, 'search_avatar.py');
+
+    // --json フラグを使用してJSON出力を要求
+    exec(`python "${scriptPath}" "${avatarId}" --json`, { encoding: 'utf8' }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[AvatarSearch] Python exec error: ${error.message} / ${stderr}`);
+            // Pythonスクリプト自体がエラーをJSONで返している可能性があるため、stdoutをチェック
+            // 致命的なエラー以外は続行を試みる
+        }
+        try {
+            // stdoutからJSONをパース
+            const result = JSON.parse(stdout);
+            res.json(result);
+        } catch (e) {
+            console.error(`[AvatarSearch] Python Parse Error: ${e.message} \nSTDOUT: ${stdout}`);
+            res.status(500).json({ error: "Python output parse failed", details: stdout });
+        }
+    });
+});
 
 // ===============================
 // ⑥ ブラウザ WS 接続処理 (Per-Client Proxy)

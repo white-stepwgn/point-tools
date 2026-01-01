@@ -16,7 +16,7 @@ window.SettingsPanel = class SettingsPanel {
         <div id="${this.panelId}"
             style="display:none; top: 50%; left: 50%; transform: translate(-50%, -50%); position: fixed; margin: 0; min-width: 340px; z-index: 99999 !important; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
             <div id="settingsHeader"
-                style="background: #eee; padding: 8px 12px; cursor: move; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                style="background: #eee; padding: 8px 12px; cursor: default; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-weight: bold;">設定</span>
                 <button id="closeSettings" style="border: none; background: none; cursor: pointer; font-size: 1.2em; font-weight:bold; color:#666;">✕</button>
             </div>
