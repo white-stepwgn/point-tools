@@ -642,8 +642,37 @@ let currentAdminNotice = ""; // 管理者からのお知らせを保持
 
 function broadcastConnectionCount() {
     if (!wss) return;
-    const count = wss.clients.size;
-    const msg = JSON.stringify({ type: 'connection_count', count: count });
+
+    let countHost = 0;
+    let countChild = 0;
+    let countIndex = 0;
+    let countUnknown = 0;
+
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            const type = client.clientType || 'unknown';
+            if (type === 'host') countHost++;
+            else if (type === 'child') countChild++;
+            else if (type === 'index') countIndex++;
+            else countUnknown++;
+        }
+    });
+
+    const activeUsers = countHost + countIndex + countUnknown;
+
+    // User Request: 🚪 represents "Additional Windows".
+    // Formula: Max(0, Children - Hosts)
+    // If Hosts=0 (e.g. only index.html used), then Children=0, Result=0. Correct.
+    const activeScreens = Math.max(0, countChild - countHost);
+
+    const msg = JSON.stringify({
+        type: 'connection_count',
+        count: activeUsers,
+        active_users: activeUsers,
+        active_screens: activeScreens,
+        details: { host: countHost, child: countChild, index: countIndex, unknown: countUnknown }
+    });
+
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(msg);
@@ -663,7 +692,21 @@ function broadcastAdminNotice(notice) {
 
 // APIでも取得できるようにする
 app.get("/api/server_status", (req, res) => {
-    res.json({ connection_count: wss ? wss.clients.size : 0 });
+    // Calculate via loop (or we could cache it, but loop is cheap for reasonable connections)
+    let activeUsers = 0;
+    let activeScreens = 0;
+    if (wss) {
+        wss.clients.forEach(client => {
+            const type = client.clientType || 'unknown';
+            if (type === 'child') activeScreens++;
+            else activeUsers++;
+        });
+    }
+    res.json({
+        connection_count: activeUsers, // Keep backward comp
+        active_users: activeUsers,
+        active_screens: activeScreens
+    });
 });
 
 // ===============================
@@ -698,6 +741,9 @@ app.get("/api/search_avatar", async (req, res) => {
 // ===============================
 wss.on("connection", (clientSocket) => {
     console.log("Browser connected");
+
+    // Initialize Metadata
+    clientSocket.clientType = 'unknown';
 
     let upstreamWS = null;
     let currentKey = null;
@@ -752,12 +798,22 @@ wss.on("connection", (clientSocket) => {
         try {
             const data = JSON.parse(msg);
 
-            // Client requests connection to a room
-            if (data.broadcast_key) {
+            // 1. Client Type Registration
+            if (data.type === 'register_client') {
+                const oldType = clientSocket.clientType;
+                clientSocket.clientType = data.client_type || 'unknown'; // 'host', 'child', 'index'
+                console.log(`[Proxy] Client Registered: ${clientSocket.clientType} (was: ${oldType})`);
+                // Re-broadcast count immediately if type changes
+                if (oldType !== clientSocket.clientType) {
+                    broadcastConnectionCount();
+                }
+            }
+            // 2. Client requests connection to a room
+            else if (data.broadcast_key) {
                 currentKey = data.broadcast_key;
                 connectUpstream(currentKey);
             }
-            // 管理者からのお知らせ送信リクエスト
+            // 3. 管理者からのお知らせ送信リクエスト
             else if (data.type === 'send_admin_notice') {
                 console.log("[Proxy] Broadcasting admin notice:", data.notice);
                 broadcastAdminNotice(data.notice);

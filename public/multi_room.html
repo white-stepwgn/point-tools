@@ -384,7 +384,10 @@
 
     <div id="global-header">
         <strong>Multi-Room Monitor</strong>
-        <div style="display:flex; gap:10px; align-items:center;">
+        <span style="margin-left:20px; font-size:0.9em; color:#ddd;">💻 現在の同時接続数: <span id="server-stats"
+                style="font-weight:bold; color:#fff;">💻 - <span style="font-size:0.8em; margin-left:5px;">🚪
+                    -</span></span></span>
+        <div style="display:flex; gap:10px; align-items:center; flex:1;">
             <span>Auto Reconnect (sec):</span>
             <input type="number" id="global-reconnect-interval" value="5" style="width: 50px;">
             <button id="settings-display-btn"
@@ -395,6 +398,10 @@
                 style="padding:5px 15px; background:#FF9800; color:white; border:none; border-radius:4px; cursor:pointer;">設定3</button>
             <button id="settings-upcoming-btn"
                 style="padding:5px 15px; background:#9C27B0; color:white; border:none; border-radius:4px; cursor:pointer;">アップカミング設定</button>
+            <button onclick="location.href='index.html'"
+                style="margin-left:auto; padding:5px 15px; background:#607D8B; color:white; border:none; border-radius:4px; cursor:pointer;">配信者ツール</button>
+            <button onclick="location.href='multi_view.html'"
+                style="padding:5px 15px; background:#009688; color:white; border:none; border-radius:4px; cursor:pointer;">マルチコメント</button>
         </div>
     </div>
 

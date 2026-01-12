@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SR Multi Chat Tool</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            flex: 1;
+            /* Occupy remaining space */
+            overflow: hidden;
+        }
+
+        .column {
+            flex: 1;
+            border-right: 2px solid #555;
+            position: relative;
+            min-width: 0;
+            /* Prevent iframe from overflowing flex item */
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .resizer {
+            width: 5px;
+            background: #444;
+            cursor: col-resize;
+            z-index: 100;
+        }
+
+        .resizer:hover {
+            background: #666;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .column {
+                border-right: none;
+                border-bottom: 2px solid #555;
+            }
+
+            .resizer {
+                width: 100%;
+                height: 5px;
+                cursor: row-resize;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls"
+        style="background: #222; padding: 5px 10px; display: flex; align-items: center; gap: 10px; color: white;">
+        <span style="font-weight: bold; margin-right: 10px;">Multi View</span>
+        <button onclick="addColumn()"
+            style="cursor: pointer; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px;">+
+            追加</button>
+        <button onclick="removeColumn()"
+            style="cursor: pointer; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px;">-
+            削除</button>
+        <span id="colCount" style="margin-left: 10px; font-size: 0.9em; color: #aaa;">3 columns</span>
+        <span id="clockSpan" style="margin-left: 15px; font-weight: bold; font-size: 1em; color: #fff;">--:--:--</span>
+        <div style="flex-grow: 1; text-align: right;">
+            <button onclick="location.href='index.html'"
+                style="padding: 5px 15px; background: #607D8B; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">配信者ツール</button>
+            <button onclick="location.href='multi_room.html'"
+                style="padding: 5px 15px; background: #009688; color: white; border: none; border-radius: 4px; cursor: pointer;">マルチポイント</button>
+        </div>
+    </div>
+    <div class="container" id="viewContainer">
+        <!-- Columns will be injected here -->
+    </div>
+
+    <script>
+        const container = document.getElementById('viewContainer');
+        const colCountSpan = document.getElementById('colCount');
+        let currentColumns = 0;
+
+        function updateColCount() {
+            colCountSpan.textContent = `${currentColumns} columns`;
+        }
+
+        function addColumn() {
+            currentColumns++;
+            const div = document.createElement('div');
+            div.className = 'column';
+            div.id = `col-${currentColumns}`;
+
+            // instance ID is simply the column index (1-based)
+            // Note: If you delete col 2 and add new one, it becomes instance 3 (simple increment)
+            // or we can reuse IDs. Let's strictly increment to avoid state confusion or just use current count if simplistic.
+            // For stability, let's use the currentColumns as the ID.
+
+            const iframe = document.createElement('iframe');
+            iframe.src = `chattool_new.html?instance=${currentColumns}`;
+
+            div.appendChild(iframe);
+            container.appendChild(div);
+            updateColCount();
+        }
+
+        function removeColumn() {
+            if (currentColumns <= 1) return; // Keep at least 1
+            const lastCol = container.lastElementChild;
+            if (lastCol) {
+                container.removeChild(lastCol);
+                currentColumns--;
+                updateColCount();
+            }
+        }
+
+        // Initialize with 3 columns by default
+        window.addEventListener('DOMContentLoaded', () => {
+            addColumn();
+            addColumn();
+            addColumn();
+
+            // Update clock every second
+            function updateClock() {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                document.getElementById('clockSpan').textContent = `${h}:${m}:${s}`;
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+    </script>
+</body>
+
+</html>

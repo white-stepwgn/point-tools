@@ -1,0 +1,34 @@
+# Node.js
+node_modules/
+
+# Logs & Debug
+*.log
+*.csv
+upload_checkpoint.txt
+debug_output*.txt
+
+# Security
+key list.txt
+cloudworks_userid-db.txt
+*_key.txt
+キーリスト.txt
+
+# System
+.DS_Store
+Thumbs.db
+*.lnk
+*.bat
+
+# Dustbin (Moved unused files)
+dust/
+public/dust/
+
+# Database
+*.db
+
+# Android (General)
+.gradle/
+local.properties
+.idea/
+build/
+*.iml

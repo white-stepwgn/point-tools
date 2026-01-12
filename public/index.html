@@ -1356,6 +1356,7 @@
         <div class="header-row">
             <label>Room ID: <input type="text" id="roomInput" placeholder="例: 000000" autocomplete="off"></label>
             <button id="switchRoom">接続</button>
+            <button id="favoritesBtn" style="font-size:0.9em; cursor:pointer; padding: 2px 8px;">お気に入り⭐️</button>
             <span id="statusSpan" class="disconnected">Status: 待機中</span>
             <div class="room-links-container" id="roomLinksTrigger" style="cursor: pointer; user-select: none;">
                 <span id="roomNameSpan">🏠 Room: -</span>
@@ -1376,12 +1377,23 @@
 
             <div style="flex:1;"></div>
 
-            <!-- Zoom Controls -->
-            <div style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
-                <button onclick="adjustZoom(-0.1)">➖</button>
-                <span id="zoomLevelDisplay" style="font-weight:bold; min-width: 40px; text-align: center;">100%</span>
-                <button onclick="adjustZoom(0.1)">➕</button>
-                <button onclick="resetZoom()" title="リセット">↺</button>
+            <!-- Zoom & Nav Controls -->
+            <div style="margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button onclick="adjustZoom(-0.1)">➖</button>
+                    <span id="zoomLevelDisplay"
+                        style="font-weight:bold; min-width: 40px; text-align: center;">100%</span>
+                    <button onclick="adjustZoom(0.1)">➕</button>
+                    <button onclick="resetZoom()" title="リセット">↺</button>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="location.href='oldindex.html'"
+                        style="font-size:0.8em; padding:2px 5px; cursor:pointer;">旧版</button>
+                    <button onclick="location.href='multi_room.html'"
+                        style="font-size:0.8em; padding:2px 5px; cursor:pointer;">マルチポイント</button>
+                    <button onclick="location.href='multi_view.html'"
+                        style="font-size:0.8em; padding:2px 5px; cursor:pointer;">マルチコメント</button>
+                </div>
             </div>
         </div>
         <div class="header-row">
@@ -1564,16 +1576,27 @@
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             serverSocket = new WebSocket(wsUrl);
+            serverSocket.onopen = () => {
+                serverSocket.send(JSON.stringify({ type: 'register_client', client_type: 'index' }));
+            };
             serverSocket.onmessage = (e) => {
                 try {
                     const data = JSON.parse(e.data);
                     if (data.type === 'connection_count') {
-                        // ヘッダーの表示を更新
+                        // ヘッダーの表示を更新: "💻 {active_users} 人  🚪 {active_screens} 枚"
                         const elHeader = document.getElementById("serverConnValue");
-                        if (elHeader) elHeader.textContent = data.count;
+                        if (elHeader) {
+                            const users = data.active_users !== undefined ? data.active_users : data.count;
+                            const screens = data.active_screens !== undefined ? data.active_screens : 0;
+                            elHeader.innerHTML = `💻 ${users} <span style="font-size:0.8em; margin-left:8px;">🚪 ${screens}</span>`;
+                        }
                         // 設定パネル内の表示を更新
                         const elSettings = document.getElementById("settingsServerConnValue");
-                        if (elSettings) elSettings.textContent = data.count;
+                        if (elSettings) {
+                            const users = data.active_users !== undefined ? data.active_users : data.count;
+                            const screens = data.active_screens !== undefined ? data.active_screens : 0;
+                            elSettings.innerHTML = `💻 ${users} <span style="font-size:0.8em; margin-left:8px;">🚪 ${screens}</span>`;
+                        }
                     }
                     else if (data.type === 'admin_notice') {
                         const noticeSpan = document.getElementById("adminNoticeSpan");
@@ -2341,6 +2364,12 @@
                     }
                 }
 
+                // Info text update
+                const infoText = document.getElementById("infoListTextInput");
+                if (infoText) {
+                    localStorage.setItem("footer_info_text", infoText.value);
+                }
+
                 applyFooterMode();
 
                 const commentEl = document.getElementById("comment");
@@ -2725,9 +2754,15 @@
 
             // Check mute filter - only for normal comments
             if (commentSettings.muteEnabled && commentSettings.muteSymbol) {
-                if (c.cm && c.cm.startsWith(commentSettings.muteSymbol)) {
-                    // console.log(`[Muted] ${c.ac}: ${c.cm}`);
-                    return;
+                // Split by comma and trim
+                const mutePatterns = commentSettings.muteSymbol.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+                if (c.cm) {
+                    // Check if comment starts with any of the patterns
+                    const isMuted = mutePatterns.some(pattern => c.cm.startsWith(pattern));
+                    if (isMuted) {
+                        return;
+                    }
                 }
             }
 
@@ -4350,6 +4385,7 @@
             // Set target immediately to invalidate previous in-flight calls
             connectionTargetId = roomId;
             currentRoomId = roomId; // Update global ID immediately to prevent races in applyFooterMode
+            window.currentRoomId = roomId; // [Antigravity Fix] Ensure window property is set for external scripts
 
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
 
@@ -4408,6 +4444,16 @@
                         // リンクを更新
                         document.getElementById("roomProfileLink").href = `https://www.showroom-live.com/room/profile?room_id=${roomId}`;
                         document.getElementById("roomFanRoomLink").href = `https://www.showroom-live.com/room/fan_club?room_id=${roomId}`;
+
+                        // [Antigravity Fix] Refresh Footer Mode now that we have room info
+                        if (typeof window.applyFooterMode === 'function') {
+                            const m = localStorage.getItem("footer_display_mode");
+                            if (m) {
+                                window.applyFooterMode(m);
+                                // [Antigravity] Re-apply after 0.5s as requested for stability
+                                setTimeout(() => window.applyFooterMode(m), 500);
+                            }
+                        }
                     } else {
                         document.getElementById("roomNameSpan").textContent = "🏠 ROOM: -";
                         document.getElementById("roomLinksHint").style.display = "none";
@@ -5219,14 +5265,14 @@
                 localStorage.setItem('cf_send_interval', cfSendInterval);
                 localStorage.setItem('cf_auto_send_enabled', 'true'); // Save enable state
                 startCfTimer();
-                alert('設定を保存し、タイマーを開始しました。');
+                showToast('設定を保存し、タイマーを開始しました。', 'success');
             } else {
-                alert('有効なURLと間隔を入力してください。');
+                showToast('有効なURLと間隔を入力してください。', 'error');
             }
         });
 
         document.getElementById('cfForceSendBtn')?.addEventListener('click', async () => {
-            if (!cfWorkerUrl) return alert('URL未設定');
+            if (!cfWorkerUrl) return showToast('URL未設定', 'error');
             const btn = document.getElementById('cfForceSendBtn');
             btn.disabled = true;
             await sendToCloudflare();
@@ -5238,7 +5284,7 @@
             cfIntervalTimer = null;
             localStorage.setItem('cf_auto_send_enabled', 'false'); // Save disable state
             updateCfStatusDisplay();
-            alert('自動送信を停止しました。');
+            showToast('自動送信を停止しました。');
         });
 
         // Initialize from localStorage
@@ -5268,7 +5314,7 @@
         document.getElementById('cfTestConnBtn')?.addEventListener('click', async () => {
             const url = document.getElementById('cfWorkerUrl').value.trim();
             if (!url) {
-                alert('URLを入力してください');
+                showToast('URLを入力してください', 'error');
                 return;
             }
             const btn = document.getElementById('cfTestConnBtn');
@@ -5365,6 +5411,192 @@
             }
         }
 
+        // ==========================================
+        // Favorites Feature (Ported from chattool_new.html)
+        // ==========================================
+        const favoritesKey = 'sr_favorites';
+        let favorites = [];
+        let editingIndex = -1;
+
+        try {
+            const savedFavorites = localStorage.getItem(favoritesKey);
+            if (savedFavorites) favorites = JSON.parse(savedFavorites);
+        } catch (e) {
+            console.error("Failed to load favorites:", e);
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === favoritesKey && e.newValue !== null) {
+                try {
+                    favorites = JSON.parse(e.newValue);
+                    const modal = document.getElementById('favoritesModal');
+                    if (modal && modal.style.display === 'block') {
+                        renderFavoritesList();
+                    }
+                } catch (err) {
+                    console.error('Failed to sync favorites:', err);
+                }
+            }
+        });
+
+        function saveFavorites() {
+            localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+        }
+
+        function renderFavoritesList() {
+            const list = document.getElementById("favoritesList");
+            if (!list) return;
+            if (favorites.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">お気に入りがまだありません</div>';
+                return;
+            }
+
+            list.innerHTML = favorites.map((fav, index) => {
+                const noteText = fav.note ? `<div style="font-size:0.8em; color:#888; margin-top:4px;">📝 ${fav.note}</div>` : '';
+                return `
+                <div style="display:flex; align-items:center; gap:6px; padding:10px; background:#f9f9f9; border:1px solid #ddd; border-radius:6px; margin-bottom:8px;">
+                    <div style="flex:1; cursor:pointer;" class="fav-item" data-room-id="${fav.id}">
+                        <div style="font-weight:bold; font-size:0.95em; color:#333;">${fav.name}</div>
+                        <div style="font-size:0.85em; color:#666;">ID: ${fav.id}</div>
+                        ${noteText}
+                    </div>
+                    <button class="edit-fav-btn" data-index="${index}" style="padding:6px 10px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85em;">編集</button>
+                    <button class="delete-fav-btn" data-index="${index}" style="padding:6px 10px; background:#ff5252; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85em;">削除</button>
+                </div>
+            `}).join('');
+
+            list.querySelectorAll('.fav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const roomId = item.getAttribute('data-room-id');
+                    document.getElementById('roomInput').value = roomId;
+                    document.getElementById('favoritesModal').style.display = 'none';
+                    // Trigger connection
+                    const switchBtn = document.getElementById('switchRoom');
+                    if (switchBtn) switchBtn.click();
+                });
+            });
+
+            list.querySelectorAll('.edit-fav-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.getAttribute('data-index'));
+                    editingIndex = index;
+                    const fav = favorites[index];
+                    document.getElementById('newFavRoomId').value = fav.id;
+                    document.getElementById('newFavRoomName').value = fav.name;
+                    document.getElementById('newFavRoomNote').value = fav.note || '';
+                    document.getElementById('addFavoriteBtn').textContent = '更新';
+                    document.getElementById('addFavoriteBtn').style.background = '#2196F3';
+                    document.getElementById('newFavRoomId').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            });
+
+            list.querySelectorAll('.delete-fav-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.getAttribute('data-index'));
+                    if (confirm('このお気に入りを削除しますか？')) {
+                        favorites.splice(index, 1);
+                        saveFavorites();
+                        renderFavoritesList();
+                        if (editingIndex === index) {
+                            resetEditMode();
+                        } else if (editingIndex > index) {
+                            editingIndex--;
+                        }
+                    }
+                });
+            });
+        }
+
+        function resetEditMode() {
+            editingIndex = -1;
+            const idInput = document.getElementById('newFavRoomId');
+            const nameInput = document.getElementById('newFavRoomName');
+            const noteInput = document.getElementById('newFavRoomNote');
+            const addBtn = document.getElementById('addFavoriteBtn');
+
+            if (idInput) idInput.value = '';
+            if (nameInput) nameInput.value = '';
+            if (noteInput) noteInput.value = '';
+            if (addBtn) {
+                addBtn.textContent = '追加';
+                addBtn.style.background = '#4CAF50';
+            }
+        }
+
+        // Setup Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const favBtn = document.getElementById('favoritesBtn');
+            const modal = document.getElementById('favoritesModal');
+            const closeBtn = document.getElementById('closeFavoritesModal');
+            const addBtn = document.getElementById('addFavoriteBtn');
+            const currentBtn = document.getElementById('addCurrentRoomBtn');
+
+            if (favBtn) {
+                favBtn.onclick = () => {
+                    if (modal) {
+                        modal.style.display = 'block';
+                        renderFavoritesList();
+                    }
+                };
+            }
+
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    if (modal) modal.style.display = 'none';
+                    resetEditMode();
+                };
+            }
+
+            if (addBtn) {
+                addBtn.onclick = () => {
+                    const roomId = document.getElementById('newFavRoomId').value.trim();
+                    const roomName = document.getElementById('newFavRoomName').value.trim();
+                    const roomNote = document.getElementById('newFavRoomNote').value.trim();
+
+                    if (!roomId) return showToast('ROOM IDを入力してください', 'error');
+                    if (!roomName) return showToast('ルーム名を入力してください', 'error');
+
+                    if (editingIndex >= 0) {
+                        favorites[editingIndex] = { id: roomId, name: roomName, note: roomNote };
+                        saveFavorites();
+                        renderFavoritesList();
+                        resetEditMode();
+                    } else {
+                        if (favorites.some(f => f.id === roomId)) {
+                            return showToast('このROOM IDは既に登録されています', 'error');
+                        }
+                        favorites.push({ id: roomId, name: roomName, note: roomNote });
+                        saveFavorites();
+                        renderFavoritesList();
+                        // Clear inputs
+                        document.getElementById('newFavRoomId').value = '';
+                        document.getElementById('newFavRoomName').value = '';
+                        document.getElementById('newFavRoomNote').value = '';
+                    }
+                };
+            }
+
+            if (currentBtn) {
+                currentBtn.onclick = () => {
+                    if (!currentRoomId) return showToast('現在接続中のルームがありません', 'error');
+                    const roomNameSpan = document.getElementById('roomNameSpan');
+                    let roomName = roomNameSpan ? roomNameSpan.textContent.replace(/🏠\s*ROOM:\s*/i, '').trim() : '';
+                    if (!roomName || roomName === '-') roomName = `Room ${currentRoomId}`;
+
+                    if (favorites.some(f => f.id === currentRoomId.toString())) {
+                        return showToast('このルームは既にお気に入りに登録されています', 'error');
+                    }
+
+                    favorites.push({ id: currentRoomId.toString(), name: roomName });
+                    saveFavorites();
+                    renderFavoritesList();
+                    showToast(`「${roomName}」をお気に入りに追加しました`, 'success');
+                };
+            }
+        });
+
         // SettingsPanelは同期的に生成されるはずなので、ここでセットアップ
         // もし生成がdelayedなら、setTimeoutなどで待つ
         setTimeout(setupSettingsHandlers, 500);
@@ -5395,6 +5627,438 @@
             </div>
         </div>
     </div>
+
+    <!-- お気に入りルームモーダル -->
+    <div id="favoritesModal"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:2px solid #ccc; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:10000; width:450px; max-height:80vh; overflow-y:auto;">
+        <div
+            style="background:#f5f5f5; padding:12px 15px; border-bottom:2px solid #ddd; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0;">
+            <h3 style="margin:0; font-size:1.1em; color:#333;">⭐️ お気に入りルーム</h3>
+            <button id="closeFavoritesModal"
+                style="cursor:pointer; font-size:1.5em; color:#999; background:none; border:none; padding:0; width:30px; height:30px;">×</button>
+        </div>
+
+        <div style="padding:15px;">
+            <!-- お気に入りリスト -->
+            <div id="favoritesList" style="margin-bottom:15px; max-height:300px; overflow-y:auto;"></div>
+
+            <!-- 現在のルームを追加ボタン -->
+            <button id="addCurrentRoomBtn"
+                style="width:100%; padding:10px; background:#FF9800; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:15px; font-size:0.95em;">
+                ⭐ 現在のルームを追加
+            </button>
+
+            <!-- 新規追加フォーム -->
+            <div style="border-top:2px solid #eee; padding-top:15px;">
+                <h4 style="margin:0 0 10px 0; font-size:0.95em; color:#555;">新規追加</h4>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="newFavRoomId" placeholder="ROOM ID (例: 490133)"
+                            style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;">
+                        <input type="text" id="newFavRoomName" placeholder="ルーム名 (例: テストルーム)"
+                            style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;">
+                    </div>
+                    <textarea id="newFavRoomNote" placeholder="備考 (任意)" rows="2"
+                        style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.9em; resize:vertical;"></textarea>
+                    <button id="addFavoriteBtn"
+                        style="padding:8px 16px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:0.9em;">追加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // [Antigravity Fix] Ensure applyFooterMode is available globally
+        window.applyFooterMode = function (mode) {
+            // Clear any existing poll timer
+            if (window.footerTelopTimer) {
+                clearTimeout(window.footerTelopTimer);
+                window.footerTelopTimer = null;
+            }
+
+            const container = document.getElementById("highValueGiftContainer");
+            if (!container) return;
+
+            // Save mode
+            localStorage.setItem("footer_display_mode", mode);
+
+            // Sync Radios
+            const radios = document.getElementsByName("footerDisplayMode");
+            for (const r of radios) {
+                if (r.value === mode) r.checked = true;
+            }
+
+            // Sync Info Area visibility
+            const infoArea = document.getElementById('infoListContentArea');
+            if (infoArea) {
+                infoArea.style.display = (mode === 'info_list') ? 'block' : 'none';
+            }
+
+            // Apply settings to inputs if they exist (Restore UI state)
+            if (mode === 'info_list') {
+                const savedSize = localStorage.getItem("footer_info_size");
+                const savedColor = localStorage.getItem("footer_info_color");
+                const savedSpeed = localStorage.getItem("footer_info_speed");
+                const savedText = localStorage.getItem("footer_info_text");
+
+                if (savedSize && document.getElementById("infoListFontSizeInput")) document.getElementById("infoListFontSizeInput").value = savedSize;
+                if (savedColor && document.getElementById("infoListColorInput")) document.getElementById("infoListColorInput").value = savedColor;
+                if (savedSpeed && document.getElementById("infoListSpeedInput")) document.getElementById("infoListSpeedInput").value = savedSpeed;
+                if (savedText && document.getElementById("infoListTextInput")) document.getElementById("infoListTextInput").value = savedText;
+            }
+
+            // Clear container
+            container.innerHTML = "";
+            container.style.display = "flex";
+            container.style.overflow = "visible";
+            container.style.position = "static";
+
+            if (mode === "none") {
+                container.style.display = "none";
+                return;
+            }
+
+            if (mode === "show_10k") {
+                if (typeof renderHighValueGifts === 'function') {
+                    renderHighValueGifts();
+                } else if (typeof userHighValueData !== 'undefined') {
+                    Object.keys(userHighValueData).forEach(uid => {
+                        const d = userHighValueData[uid];
+                        if (d.totalPoints >= 10000) {
+                            if (typeof updateHighValueDisplay === 'function')
+                                updateHighValueDisplay(uid, d.userName, d.avatarId, d);
+                        }
+                    });
+                }
+            } else if (mode === "show_event") {
+                if (window.currentEvent && window.currentEvent.event) {
+                    const e = window.currentEvent.event;
+                    const div = document.createElement("div");
+                    div.style.padding = "10px";
+                    div.style.width = "100%";
+                    div.style.display = "flex";
+                    div.style.alignItems = "center";
+                    div.style.justifyContent = "center";
+                    div.innerHTML = `
+                    <img src="${e.image_s}" style="height:100px; object-fit:contain; margin-right:20px;">
+                    <div>
+                        <div style="font-weight:bold; font-size:1.2em;">${e.event_name}</div>
+                        <div>期間: ${new Date(e.started_at * 1000).toLocaleString()} ~ ${new Date(e.ended_at * 1000).toLocaleString()}</div>
+                    </div>
+                 `;
+                    container.appendChild(div);
+                } else {
+                    container.innerHTML = "<div style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#888;'>イベント情報なし</div>";
+                }
+            } else if (mode === "show_ranking") {
+                if (window.eventRankingManager) window.eventRankingManager.render(container);
+                else container.innerHTML = "<div style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#888;'>ランキングデータなし</div>";
+            } else if (mode === "info_list") {
+                const text = localStorage.getItem("footer_info_text") || "お知らせはありません";
+                const size = localStorage.getItem("footer_info_size") || "30";
+                const color = localStorage.getItem("footer_info_color") || "#333333";
+                const speed = localStorage.getItem("footer_info_speed") || "20";
+
+                container.style.overflow = "hidden";
+                container.style.position = "relative";
+
+                const marquee = document.createElement("div");
+                marquee.style.position = "absolute";
+                marquee.style.top = "50%"; // Center Vertically
+                marquee.style.whiteSpace = "nowrap";
+                marquee.style.fontWeight = "bold";
+                marquee.id = "footerMarquee";
+
+                // User Settings
+                marquee.style.fontSize = size + "px";
+                marquee.style.color = color;
+
+                marquee.textContent = text;
+                container.appendChild(marquee);
+
+                // Style Injection
+                let style = document.getElementById("marqueeStyle");
+                if (!style) {
+                    style = document.createElement("style");
+                    style.id = "marqueeStyle";
+                    document.head.appendChild(style);
+                }
+                // Keyframes for vertical centering + horizontal scroll
+                style.innerHTML = `
+                @keyframes marquee {
+                    0% { left: 100%; transform: translate(0, -50%); }
+                    100% { left: 0; transform: translate(-100%, -50%); }
+                }
+             `;
+
+                // Speed calculation
+                const duration = parseInt(speed) || 20;
+                marquee.style.animation = `marquee ${duration}s linear infinite`;
+
+            } else if (mode === "sr_telop") {
+                container.style.overflow = "hidden";
+                container.style.position = "relative";
+                container.style.display = "flex";
+                container.style.flexDirection = "column"; // Stack vertically
+                container.style.alignItems = "center";
+                container.style.justifyContent = "center";
+                container.style.gap = "5px";
+                container.style.lineHeight = "1.2";
+
+                // Initial State
+                const initialId = window.currentRoomId || (typeof currentRoomId !== 'undefined' ? currentRoomId : null);
+
+                // Helper to render content
+                const renderContent = (kText, tText, isAllEmpty) => {
+                    container.innerHTML = ""; // Clear
+
+                    if (isAllEmpty) {
+                        const ph = document.createElement("span");
+                        ph.style.fontWeight = "bold";
+                        ph.style.color = "#888";
+                        ph.textContent = initialId ? "情報を取得中..." : "接続待機中...";
+                        if (!initialId) ph.style.fontSize = "18px";
+                        container.appendChild(ph);
+                        return;
+                    }
+
+                    // 1. Telop (Top)
+                    if (tText) {
+                        const tDiv = document.createElement("div");
+                        tDiv.style.fontWeight = "bold";
+                        tDiv.style.fontSize = "16px";
+                        tDiv.style.color = "#333";
+                        tDiv.style.maxWidth = "95%";
+                        tDiv.style.whiteSpace = "nowrap";
+                        tDiv.style.overflow = "hidden";
+                        tDiv.style.textOverflow = "ellipsis";
+                        tDiv.textContent = `📝 テロップ: ${tText}`;
+                        container.appendChild(tDiv);
+                    }
+
+                    // 2. Karaoke (Bottom)
+                    if (kText) {
+                        // Clean text: remove ♪ and spaces
+                        const cleanSong = kText.replace(/[♪♬]\s*/g, '').trim();
+
+                        const kRow = document.createElement("div");
+                        kRow.style.display = "flex";
+                        kRow.style.alignItems = "center";
+                        kRow.style.gap = "10px";
+                        kRow.style.maxWidth = "95%";
+
+                        const kSpan = document.createElement("span");
+                        kSpan.style.fontWeight = "bold";
+                        kSpan.style.fontSize = "18px"; // Emphasize song
+                        kSpan.style.color = "#000";
+                        kSpan.textContent = `🎤 カラオケ: ${cleanSong}`;
+                        kSpan.style.whiteSpace = "nowrap";
+                        kSpan.style.overflow = "hidden";
+                        kSpan.style.textOverflow = "ellipsis";
+
+                        const copyBtn = document.createElement("button");
+                        copyBtn.textContent = "コピー";
+                        copyBtn.style.padding = "2px 8px";
+                        copyBtn.style.fontSize = "12px";
+                        copyBtn.style.cursor = "pointer";
+                        copyBtn.style.background = "#2196F3";
+                        copyBtn.style.color = "white";
+                        copyBtn.style.border = "none";
+                        copyBtn.style.borderRadius = "4px";
+                        copyBtn.style.whiteSpace = "nowrap";
+
+                        copyBtn.onclick = () => {
+                            navigator.clipboard.writeText(cleanSong).then(() => {
+                                showToast(`「${cleanSong}」をコピーしました`, "success");
+                            }).catch(() => showToast("コピー失敗", "error"));
+                        };
+
+                        kRow.appendChild(kSpan);
+                        kRow.appendChild(copyBtn);
+                        container.appendChild(kRow);
+                    }
+
+                    // Fallback if data is empty but connected
+                    if (!kText && !tText) {
+                        const empty = document.createElement("span");
+                        empty.textContent = "情報なし"; // Connected but no text
+                        empty.style.color = "#aaa";
+                        container.appendChild(empty);
+                    }
+                };
+
+                // Render Initial
+                renderContent(null, null, true);
+
+                const fetchTelop = async () => {
+                    const targetId = window.currentRoomId || (typeof currentRoomId !== 'undefined' ? currentRoomId : null);
+                    if (!targetId) {
+                        renderContent(null, null, true); // Reset to waiting
+                        if (window.footerTelopTimer) clearTimeout(window.footerTelopTimer);
+                        window.footerTelopTimer = setTimeout(fetchTelop, 1000);
+                        return;
+                    }
+
+                    try {
+                        const apiUrl = `https://www.showroom-live.com/api/live/telop?room_id=${targetId}`;
+                        const res = await fetch(`/api/proxy_cf?url=${encodeURIComponent(apiUrl)}`);
+                        if (!res.ok) throw new Error("Fetch failed");
+                        const json = await res.json();
+
+                        let karaokeText = null;
+                        let telopText = null;
+
+                        if (json.telops && Array.isArray(json.telops)) {
+                            const K = json.telops.find(t => t.type === 'system_karaoke');
+                            if (K && K.text) karaokeText = K.text;
+                            const U = json.telops.find(t => t.type === 'user');
+                            if (U && U.text) telopText = U.text;
+                        }
+                        if (!telopText && json.telop) telopText = json.telop;
+
+                        renderContent(karaokeText, telopText, false);
+
+                        // Schedule
+                        const interval = json.interval && json.interval > 0 ? json.interval : 10000;
+                        if (window.footerTelopTimer) clearTimeout(window.footerTelopTimer);
+                        window.footerTelopTimer = setTimeout(fetchTelop, interval);
+
+                    } catch (e) {
+                        console.error("SR Telop Error", e);
+                        // Retry
+                        if (window.footerTelopTimer) clearTimeout(window.footerTelopTimer);
+                        window.footerTelopTimer = setTimeout(fetchTelop, 20000);
+                    }
+                };
+
+                // Delay initial fetch by 1 second to ensure connection/API stability
+                setTimeout(fetchTelop, 1000);
+            }
+        };
+        // Rebind Apply Button & Restore State
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Initial State Restore
+            const savedMode = localStorage.getItem("footer_display_mode");
+            if (savedMode) {
+                setTimeout(() => window.applyFooterMode(savedMode), 500);
+            }
+
+            // 2. Override Button Handler
+            // Use a slightly more aggressive interval to ensure we catch any re-renders
+            const bindApplyButton = () => {
+                const btn = document.getElementById("applyDisplaySettings");
+                if (btn) {
+                    // Remove existing listeners if possible (clone node trick)
+                    // const newBtn = btn.cloneNode(true);
+                    // btn.parentNode.replaceChild(newBtn, btn);
+                    // btn = newBtn; // Update reference
+                    // Ideally we just overwrite onclick. If addEventListener was used, we can't easily remove it without reference.
+                    // However, the original code used onclick = () => ...
+
+                    btn.onclick = (e) => {
+                        e.preventDefault(); // Prevent any default action
+                        e.stopPropagation(); // Stop bubbling
+
+                        // Save General Settings
+                        const commentFontSize = document.getElementById("commentFontSize");
+                        if (commentFontSize && window.commentSettings) commentSettings.fontSize = parseInt(commentFontSize.value);
+                        const commentColor = document.getElementById("commentColor");
+                        if (commentColor && window.commentSettings) commentSettings.color = commentColor.value;
+                        if (typeof saveCommentSettings === 'function') saveCommentSettings();
+
+                        // Save Info List Settings
+                        const infoText = document.getElementById("infoListTextInput");
+                        const infoSize = document.getElementById("infoListFontSizeInput");
+                        const infoColor = document.getElementById("infoListColorInput");
+                        const infoSpeed = document.getElementById("infoListSpeedInput");
+
+                        if (infoText) localStorage.setItem("footer_info_text", infoText.value);
+                        if (infoSize) localStorage.setItem("footer_info_size", infoSize.value);
+                        if (infoColor) localStorage.setItem("footer_info_color", infoColor.value);
+                        if (infoSpeed) localStorage.setItem("footer_info_speed", infoSpeed.value);
+
+                        // Get selected mode
+                        let selectedMode = "show_10k";
+                        const radios = document.getElementsByName("footerDisplayMode");
+                        for (const r of radios) { if (r.checked) selectedMode = r.value; }
+
+                        // Apply
+                        window.applyFooterMode(selectedMode);
+
+                        // Close Settings Panel
+                        const panel = document.getElementById("settingsPanel");
+                        if (panel) panel.style.display = "none";
+
+                        // console.log("Settings Applied (No Alert)");
+                    };
+                }
+            };
+
+            // Try binding immediately and then again later just in case
+            setTimeout(bindApplyButton, 1000);
+            setTimeout(bindApplyButton, 3000);
+        });
+
+    </script>
+
+    <!-- Non-blocking Toast Notification Helper -->
+    <script>
+        window.showToast = function (message, type = 'normal') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.position = 'fixed';
+                container.style.bottom = '20px';
+                container.style.right = '20px';
+                container.style.zIndex = '10001';
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '10px';
+                container.style.pointerEvents = 'none';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.background = 'rgba(33, 33, 33, 0.9)';
+            toast.style.color = '#fff';
+            toast.style.padding = '12px 20px';
+            toast.style.borderRadius = '6px';
+            toast.style.fontSize = '14px';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            toast.style.minWidth = '200px';
+            toast.style.maxWidth = '400px';
+
+            // Type indicators
+            if (type === 'success') {
+                toast.style.borderLeft = '5px solid #4CAF50';
+            } else if (type === 'error') {
+                toast.style.borderLeft = '5px solid #F44336';
+            } else if (type === 'info') {
+                toast.style.borderLeft = '5px solid #2196F3';
+            }
+
+            container.appendChild(toast);
+
+            // Animate In
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            // Animate Out
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 300);
+            }, 3000);
+        };
+    </script>
 </body>
 
 </html>

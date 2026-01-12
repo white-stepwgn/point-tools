@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SR Roulette Game</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --accent-color: #FFD700;
+            --bg-color: #1a1a2e;
+            --panel-bg: rgba(255, 255, 255, 0.1);
+            --text-color: #ffffff;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(33, 150, 243, 0.2) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.2) 0%, transparent 20%);
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .connection-panel {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            background: rgba(255, 255, 255, 0.1);
+            border: var(--glass-border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            outline: none;
+            width: 120px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), #1976D2);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #FF5252, #D32F2F);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+            font-size: 1.2em;
+            padding: 10px 30px;
+        }
+
+        .status-badge {
+            font-size: 0.8em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- Main Game Area --- */
+        .game-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+            position: relative;
+        }
+
+        .visual-placeholder {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 10px solid var(--accent-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 5em;
+            font-weight: bold;
+            background: radial-gradient(circle, #333 0%, #000 100%);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+            text-shadow: 0 0 20px var(--accent-color);
+            position: relative;
+        }
+
+        .visual-placeholder::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        /* --- Footer / Controls --- */
+        .control-panel {
+            height: 250px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-top: var(--glass-border);
+            display: flex;
+            padding: 15px;
+            gap: 20px;
+        }
+
+        .panel-section {
+            background: var(--panel-bg);
+            border: var(--glass-border);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Participants List */
+
+
+        .participants-header {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .participant-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 5px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .participant-name {
+            margin-left: 10px;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 1.0em;
+            /* Reduced size */
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .participant-target {
+            background: var(--primary-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        /* Result Area */
+        .result-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+
+        .result-number {
+            font-size: 6em;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            opacity: 0.5;
+            transition: all 0.5s;
+        }
+
+        .result-number.active {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        /* Action Buttons */
+        .action-area {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn-deadline {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            height: 80px;
+            font-size: 1.2em;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-deadline.disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1.0);
+                opacity: 1;
+            }
+        }
+
+        .winner-highlight {
+            font-size: 1.5em;
+            /* Larger font */
+            font-weight: bold;
+            color: #FFD700;
+            /* Gold */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 2px 2px 0px #000;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            display: inline-block;
+            max-width: 90%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        /* Number Styles */
+        .hit-number {
+            color: #FFC107;
+            font-weight: bold;
+            text-shadow: 0 0 5px gold;
+            border-bottom: 2px solid gold;
+            margin-right: 5px;
+        }
+
+        .miss-number {
+            color: #aaa;
+            margin-right: 5px;
+        }
+
+        .winner-row {
+            border: 2px solid gold !important;
+            background: linear-gradient(45deg, #FFD700, #FFA000) !important;
+            color: black !important;
+        }
+
+        .winner-row .hit-number {
+            color: black !important;
+            text-shadow: none !important;
+            border-bottom-color: black !important;
+        }
+
+        .winner-row .participant-name {
+            color: #333 !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="connection-panel">
+            <input type="text" id="roomInput" placeholder="Room ID">
+            <button class="btn" id="connectBtn" onclick="connectToRoom()">接続</button>
+            <span id="statusSpan" class="status-badge">未接続</span>
+        </div>
+        <div>
+            <button class="btn btn-start" id="startBtn" onclick="startGame()">スタート</button>
+            <button class="btn btn-reset" id="resetBtn" onclick="resetGame()">リセット</button>
+            <button class="btn" id="settingsBtn">設定</button>
+        </div>
+    </header>
+
+    <div class="main-body" style="display: flex; flex: 1; overflow: hidden;">
+        <!-- Left Sidebar: Participants -->
+        <div class="panel-section participants-list" id="participantsContainer"
+            style="width: 640px; display: flex; flex-direction: column; border-right: var(--glass-border); border-radius: 0; margin: 0; background: rgba(0,0,0,0.2);">
+            <div class="participants-header" style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="font-weight:bold; font-size:1.1em;">参加者リスト</span>
+                <span id="participantCount"
+                    style="background:var(--primary-color); padding:2px 8px; border-radius:10px; font-size:0.8em;">0人</span>
+            </div>
+            <div id="participantsList"
+                style="flex:1; overflow-y:auto; padding:10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start;">
+                <!-- Items will be added here -->
+            </div>
+        </div>
+
+        <!-- Right: Game & Controls -->
+        <div class="right-panel" style="flex: 1; display: flex; flex-direction: column; position: relative;">
+
+            <div class="game-container">
+                <div class="visual-placeholder" id="gameVisual">
+                    READY
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="panel-section result-area" style="flex: 2;">
+                    <div id="historyDisplay"
+                        style="display:flex; gap:10px; margin-bottom:15px; height:40px; justify-content:center;">
+                        <!-- Drawn balls appear here -->
+                    </div>
+
+                    <div id="resultMessage" style="font-size: 1.5em; margin-top: 10px; color: #aaa; text-align:center;">
+                        スタート待機中</div>
+                </div>
+
+                <div class="panel-section action-area" style="flex: 1;">
+                    <button class="btn btn-deadline" id="deadlineBtn" onclick="toggleDeadline()">
+                        <span>⏱ 締め切り</span>
+                        <span style="font-size:0.7em" id="deadlineStatus">受付中</span>
+                    </button>
+                    <button class="btn" id="nextDrawBtn" style="background:#673AB7; display:none;"
+                        onclick="drawNextBall()">
+                        次のボールを引く
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center;">
+        <div
+            style="background:var(--bg-color); border:1px solid #444; padding:20px; border-radius:10px; width:400px; color:white; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+            <h3 style="margin-top:0; border-bottom:1px solid #555; padding-bottom:10px;">設定</h3>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; margin-bottom:5px;">選択数・抽選回数:</label>
+                <select id="digitSelect" style="padding:5px; width:100%;">
+                    <option value="1">1個</option>
+                    <option value="2">2個</option>
+                    <option value="3" selected>3個</option>
+                    <option value="4">4個</option>
+                    <option value="5">5個</option>
+                    <option value="6">6個</option>
+                    <option value="7">7個</option>
+                    <option value="8">8個</option>
+                    <option value="9">9個</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; margin-bottom:5px;">玉の最大数 (1〜N):</label>
+                <input type="number" id="maxNumInput" value="9" min="1" max="99"
+                    style="width:100%; padding:5px; box-sizing:border-box; background:rgba(255,255,255,0.1); color:white; border:1px solid #555;">
+                <div style="font-size:0.8em; color:#aaa; margin-top:3px;">※ 1からこの数字までの玉が入ります</div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; margin-bottom:5px;">抽選演出の時間 (秒):</label>
+                <input type="number" id="durationInput" value="3" min="1" max="10" step="0.5"
+                    style="width:100%; padding:5px; box-sizing:border-box; background:rgba(255,255,255,0.1); color:white; border:1px solid #555;">
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; margin-bottom:5px;">当選者名の文字サイズ (em):</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="number" id="fontSizeInput" value="1.5" min="0.5" max="5.0" step="0.1"
+                        style="width:80px; padding:5px; box-sizing:border-box; background:rgba(255,255,255,0.1); color:white; border:1px solid #555;">
+                    <span id="fontPreview"
+                        style="color:#FFD700; font-weight:bold; font-size:1.5em; border:1px solid #555; padding:2px 5px; flex:1; text-align:center; white-space:nowrap; overflow:hidden;">テスト表示
+                        Test</span>
+                    <button id="testFontDisplayBtn" class="btn"
+                        style="padding:5px 10px; font-size:0.8em; white-space:nowrap;">実画面で確認</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px; border-top:1px solid #555; padding-top:15px;">
+                <label style="display:block; margin-bottom:5px;">テスト機能:</label>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="text" id="testIdInput" placeholder="ID (任意)" style="width:20%; padding:5px;">
+                    <input type="text" id="testNameInput" placeholder="名前 (例: Test)" style="width:30%; padding:5px;">
+                    <input type="text" id="testCommentInput" placeholder="コメント (例: 123)" style="flex:1; padding:5px;">
+                </div>
+                <div style="text-align:right;">
+                    <button id="testCommentBtn" class="btn" style="padding:5px 10px; font-size:0.9em;">送信</button>
+                </div>
+            </div>
+
+            <div style="text-align:right; margin-top:20px;">
+                <button id="closeSettingsBtn" class="btn" style="background:#555;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="js/roulette.js"></script>
+    <script src="js/websocket.js"></script>
+
+    <script>
+        // Bridge function to connect websocket.js to roulette.js
+        window.connectToRoom = () => {
+            if (window.connectRoom) {
+                window.connectRoom();
+            } else {
+                alert("接続モジュールが読み込まれていません");
+            }
+        };
+
+        // Initialize default settings
+        document.addEventListener('DOMContentLoaded', () => {
+            // ユーザーの入力値を復元
+            const savedRoomId = localStorage.getItem("lastRoomId");
+            if (savedRoomId) document.getElementById("roomInput").value = savedRoomId;
+        });
+    </script>
+</body>
+
+</html>

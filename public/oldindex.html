@@ -3,12 +3,20 @@
 
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>SR コメント・ギフト 3カラム + 設定パネル</title>
     <style>
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
         html,
         body {
             height: 100%;
             overflow: hidden;
+            /* Prevent overscroll bounce on whole page */
+            overscroll-behavior: none;
         }
 
         body {
@@ -55,7 +63,7 @@
             display: flex;
             gap: 10px;
             /* margin-top: 80px; removed */
-            padding: 10px;
+            padding: 10px 0 10px 10px;
             flex: 1;
             /* Fill remaining space */
             overflow: hidden;
@@ -77,6 +85,9 @@
             padding: 0;
             min-width: 0;
             /* Prevent flex item overflow */
+            overflow-wrap: break-word;
+            /* テキスト折り返しを強制 */
+            word-break: break-word;
         }
 
         /* コンテンツエリア（スクロール対象） */
@@ -87,6 +98,14 @@
             flex: 1;
             overflow-y: auto;
             padding: 5px;
+            /* Smooth scrolling for iOS */
+        }
+
+        /* 20秒経過した有料ギフトに表示するボーダー */
+        .old-gift-border {
+            border-bottom: 2px solid red !important;
+            padding-bottom: 2px;
+            /* ボーダーとコンテンツの間隔 */
         }
 
         .sticky-header {
@@ -137,11 +156,200 @@
             font-size: 0.9em;
             margin-bottom: 2px;
             text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
         }
 
         #comment .comment-text {
             margin-left: 0;
             margin-top: 0;
+        }
+
+        /* ルームリンク関連 */
+        .room-links-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        #roomNameSpan {
+            font-weight: bold;
+            color: #1a237e !important;
+            background: rgba(33, 150, 243, 0.1);
+            padding: 3px 15px;
+            border-radius: 20px;
+            border-bottom: 2px solid #2196F3;
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        #roomNameSpan:hover {
+            background: rgba(33, 150, 243, 0.2);
+        }
+
+        #roomLinksDropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 180px;
+            padding: 5px 0;
+            overflow: hidden;
+        }
+
+        .room-link-item {
+            display: block;
+            padding: 10px 15px;
+            color: #333;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.1s;
+        }
+
+        .room-link-item:hover {
+            background: #f0f0f0;
+            color: #2196F3;
+        }
+
+        .room-link-item:not(:last-child) {
+            border-bottom: 1px solid #eee;
+        }
+
+        .bookmark-btn {
+            cursor: pointer;
+            font-size: 1.1em;
+            opacity: 0.4;
+            transition: all 0.2s;
+            padding: 2px 5px;
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        .bookmark-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .bookmark-btn.active {
+            opacity: 1 !important;
+            color: #ff9800 !important;
+        }
+
+        /* しおりモーダル */
+        #bookmarkModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 20px;
+            z-index: 2200;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            width: 450px;
+            max-height: 80vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            flex-direction: column;
+        }
+
+        #bookmarkModal.show {
+            display: flex;
+        }
+
+        #bookmarkModal h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #FFD700;
+            padding-bottom: 10px;
+        }
+
+        #bookmarkList {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .bookmark-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 5px solid #FFD700;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .bookmark-item:hover {
+            background: #f0f0f0;
+        }
+
+        .bookmark-item-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .bookmark-item-content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .bookmark-item-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 2px;
+        }
+
+        .bookmark-item-text {
+            font-size: 1em;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bookmark-item-time {
+            font-size: 0.75em;
+            color: #999;
+            margin-left: 10px;
+        }
+
+        .bookmark-item-remove {
+            color: #ff5252;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 5px;
+        }
+
+        .bookmark-item-remove:hover {
+            color: #ff0000;
         }
 
         /* ギフト */
@@ -249,6 +457,28 @@
 
         #statusSpan.connected {
             color: green;
+        }
+
+        /* 管理者お知らせアニメーション */
+        @keyframes noticeBlink {
+            0% {
+                opacity: 1;
+                border-color: #ffb74d;
+            }
+
+            50% {
+                opacity: 0.7;
+                border-color: #ff9800;
+            }
+
+            100% {
+                opacity: 1;
+                border-color: #ffb74d;
+            }
+        }
+
+        .admin-notice-blink {
+            animation: noticeBlink 2s infinite;
         }
 
         /* アラームモーダル */
@@ -507,6 +737,8 @@
             height: 150px;
             /* Default height */
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            /* Smooth scrolling for iOS */
             overflow-y: hidden;
             display: flex;
             flex-direction: row;
@@ -577,16 +809,77 @@
             position: relative;
         }
 
-        /* 他のアイテムの滑らかな移動（JSで制御するためCSS transitionは削除またはJSで上書き） */
-        .high-value-gift-item {
-            /* transitionはJSで動的に適用します */
-        }
+
 
         /* 上段：アバターとギフトアイコン */
         .high-value-gift-top {
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        /* ホバーエフェクト */
+        .high-value-gift-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 履歴モーダルのレイアウト調整 */
+        #commentHistoryModal.show,
+        #giftHistoryModal.show {
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh !important;
+            /* 画面高さを超えないように */
+            padding-bottom: 0 !important;
+            /* フッターのためにパディング調整 */
+            overflow: hidden !important;
+            /* 内部スクロールにするため */
+        }
+
+        #commentHistoryList,
+        #giftHistoryList {
+            overflow-y: auto;
+            flex: 1;
+            /* 残りの高さを占有 */
+            padding-bottom: 10px;
+            max-height: none !important;
+            /* インラインスタイルを上書き */
+        }
+
+        .modal-footer {
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: #f9f9f9;
+            flex-shrink: 0;
+            /* 縮まないよう固定 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+            margin: 0 -20px 0 -20px;
+            /* モーダルのパディングを相殺して全幅にする */
+            padding: 10px 20px;
+        }
+
+        #commentHistoryUserId,
+        #giftHistoryUserId {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #2196F3;
+        }
+
+        #commentHistoryUserId:hover,
+        #giftHistoryUserId:hover {
+            color: #0d47a1;
+        }
+
+        /* モーダルのパディングが設定されている場合の調整 */
+        #commentHistoryModal,
+        #giftHistoryModal {
+            padding: 20px;
         }
 
         /* 銀色枠（10000pt以上） */
@@ -914,6 +1207,80 @@
             padding: 40px 20px;
             font-size: 1.1em;
         }
+
+        /* Info Modal (Cloudflare/User Details) */
+        #info-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #info-modal .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #info-modal .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        #info-modal .close-btn:hover {
+            color: #000;
+        }
+
+        .info-list-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-list-item img {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+
+        .info-name {
+            flex: 1;
+            font-weight: bold;
+        }
+
+        #past-names-list {
+            margin-top: 10px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .past-name-item {
+            font-size: 0.9em;
+            color: #555;
+            border-bottom: 1px solid #ddd;
+            padding: 4px 0;
+        }
     </style>
 </head>
 
@@ -922,156 +1289,23 @@
     <div id="overlay"></div>
 
     <!-- 設定パネル（bodyの直下に配置） -->
-    <div id="settingsPanel"
-        style="top: 50%; left: 50%; transform: translate(-50%, -50%); position: fixed; margin: 0; min-width: 300px; z-index: 99999 !important;">
-        <div id="settingsHeader"
-            style="background: #eee; padding: 5px 10px; cursor: move; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: bold;">設定</span>
-            <button id="closeSettings"
-                style="border: none; background: none; cursor: pointer; font-size: 1.2em;">✕</button>
-        </div>
-        <div style="padding: 15px;">
-            <div><strong>コメント:</strong> 文字サイズ <input type="number" id="commentFontSize" value="14" min="10" max="30"> px
-                色 <input type="color" id="commentColor" value="#000000"></div>
-            <div style="margin-top: 10px;"><label><input type="checkbox" id="testModeCheckbox">
-                    テストモード（通信停止ボタン表示）</label></div>
+    <!-- 設定パネル（JSで動的生成されます） -->
+    <!-- settingsPanel removed, will be injected by settings_module.js -->
 
-            <!-- テスト機能ボタン（テストモード時のみ表示） -->
-            <div id="testButtons"
-                style="margin-top: 10px; display: none; border-top: 1px solid #eee; padding-top: 10px;">
-                <div style="margin-bottom:5px;">
-                    <button id="testCommentBtn" style="width:100%; margin-bottom:5px;">テストコメント</button>
-                    <button id="testGiftBtn" style="width:100%;">テストギフト（一括）</button>
-                </div>
-
-                <!-- テストユーザー選択 -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                    <div style="font-size: 0.9em; margin-bottom: 5px; font-weight: bold;">テストユーザー選択:</div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
-                        <button class="test-user-btn" data-user-id="1001" data-user-name="テストA"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">A</button>
-                        <button class="test-user-btn" data-user-id="1002" data-user-name="テストB"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">B</button>
-                        <button class="test-user-btn" data-user-id="1003" data-user-name="テストC"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">C</button>
-                        <button class="test-user-btn" data-user-id="1004" data-user-name="テストD"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">D</button>
-                        <button class="test-user-btn" data-user-id="1005" data-user-name="テストE"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">E</button>
-                        <button class="test-user-btn" data-user-id="1006" data-user-name="テストF"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">F</button>
-                    </div>
-                </div>
-
-                <!-- 個数選択ボタン -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                    <div style="font-size: 0.9em; margin-bottom: 5px; font-weight: bold;">個数選択:</div>
-                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;">
-                        <button class="test-count-btn" data-count="1"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×1</button>
-                        <button class="test-count-btn" data-count="2"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×2</button>
-                        <button class="test-count-btn" data-count="3"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×3</button>
-                        <button class="test-count-btn" data-count="4"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×4</button>
-                        <button class="test-count-btn" data-count="5"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×5</button>
-                        <button class="test-count-btn" data-count="6"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×6</button>
-                        <button class="test-count-btn" data-count="7"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×7</button>
-                        <button class="test-count-btn" data-count="8"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×8</button>
-                        <button class="test-count-btn" data-count="9"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×9</button>
-                        <button class="test-count-btn" data-count="10"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×10</button>
-                        <button class="test-count-btn" data-count="100"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×100</button>
-                        <button class="test-count-btn" data-count="1000"
-                            style="padding: 5px; font-size: 0.8em; cursor: pointer; border: 2px solid #ddd; border-radius: 4px; background: white;">×1000</button>
-                    </div>
-                </div>
-
-                <!-- テストギフトアイコン -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                    <div style="font-size: 0.9em; margin-bottom: 5px; font-weight: bold;">テストギフト:</div>
-                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;">
-                        <img src="https://static.showroom-live.com/image/gift/3000421_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3000421" data-type="2" title="無料ギフト(星)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3000844_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3000844" data-type="2" title="無料ギフト(その他)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3_s.png?v=7" class="test-gift-icon-new"
-                            data-id="3" data-type="1" title="有料ギフト(3)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/800003_s.png?v=7"
-                            class="test-gift-icon-new" data-id="800003" data-type="1" title="有料ギフト(800003)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/21_s.png?v=7" class="test-gift-icon-new"
-                            data-id="21" data-type="1" title="有料ギフト(21)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3000349_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3000349" data-type="1" title="有料ギフト(3000349)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/1601_s.png?v=7" class="test-gift-icon-new"
-                            data-id="1601" data-type="2" title="ギフトID 1601"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3000752_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3000752" data-type="2" title="無料ギフト(3000752)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/800093_s.png?v=7"
-                            class="test-gift-icon-new" data-id="800093" data-type="2" title="ギフトID 800093"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/18_s.png?v=7" class="test-gift-icon-new"
-                            data-id="18" data-type="1" title="有料ギフト(18)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/800072_s.png?v=7"
-                            class="test-gift-icon-new" data-id="800072" data-type="1" title="有料ギフト(800072)"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001128_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001128" data-type="2" title="ギフトID 3001128"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001129_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001129" data-type="2" title="ギフトID 3001129"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001130_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001130" data-type="2" title="ギフトID 3001130"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001131_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001131" data-type="2" title="ギフトID 3001131"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001132_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001132" data-type="2" title="ギフトID 3001132"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001133_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001133" data-type="2" title="ギフトID 3001133"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001134_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001134" data-type="2" title="ギフトID 3001134"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001135_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001135" data-type="2" title="ギフトID 3001135"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001136_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001136" data-type="2" title="ギフトID 3001136"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001137_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001137" data-type="2" title="ギフトID 3001137"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                        <img src="https://static.showroom-live.com/image/gift/3001138_s.png?v=7"
-                            class="test-gift-icon-new" data-id="3001138" data-type="2" title="ギフトID 3001138"
-                            style="width:30px; height:30px; cursor:pointer; border:1px solid #ddd; border-radius:4px;">
-                    </div>
-                </div>
-            </div>
-            <div style="margin-top: 15px; text-align: right;">
-                <button id="applyDisplaySettings">適用</button>
-            </div>
-        </div>
-    </div>
+    <script src="./js/settings_module.js?v=20251231_2"></script>
+    <script>
+        // DOM構築のタイミングを待たずに即時実行したいが、bodyはまだパース途中。
+        // ただし、このscriptタグより上にはまだ要素が無いので、bodyへの追加は問題ないはずだが、
+        // 安全のため、DOMContentLoadedを待つか、insertAdjacentHTMLのターゲットを適切にする。
+        // ここでは bodyが存在することは確定しているので、即時実行してみる。
+        // もしbodyがnullならDOMContentLoadedを使う。
+        if (document.body) {
+            new SettingsPanel();
+        } else {
+            console.warn("body not ready, deferred init");
+            document.addEventListener('DOMContentLoaded', () => new SettingsPanel());
+        }
+    </script>
     <div id="alarmModal">
         <h3>アラーム設定</h3>
         <input type="text" id="alarmTimeInput" placeholder="--:--" readonly>
@@ -1113,23 +1347,71 @@
             <button class="close-btn" id="closeCommentHistory">×</button>
         </h3>
         <div id="commentHistoryList"></div>
+        <div class="modal-footer" id="commentHistoryFooter">
+            <span id="commentHistoryUserId">ID: -</span>
+        </div>
     </div>
 
     <header>
         <div class="header-row">
-            <label>Room ID: <input type="text" id="roomInput" placeholder="例: 490133"></label>
+            <label>Room ID: <input type="text" id="roomInput" placeholder="例: 000000" autocomplete="off"></label>
             <button id="switchRoom">接続</button>
             <span id="statusSpan" class="disconnected">Status: 待機中</span>
-            <span id="hbSpan">HB: 10s</span>
-            <span id="kpSpan">KeyPoll: 5s</span>
-            <span id="roomNameSpan">Room: -</span>
-            <span id="currentLiveStartedAtSpan">未配信</span>
-            <span id="currentLiveElapsedSpan">経過時間: -</span>
+            <div class="room-links-container" id="roomLinksTrigger" style="cursor: pointer; user-select: none;">
+                <span id="roomNameSpan">🏠 Room: -</span>
+                <span id="roomLinksHint"
+                    style="display: none; margin-left: 8px; font-size: 0.85em; color: #666; font-weight: bold; vertical-align: middle;">👈️PF・FRへ</span>
+                <div id="roomLinksDropdown">
+                    <a href="#" id="roomProfileLink" class="room-link-item" target="_blank">👤 プロフィールページへ</a>
+                    <a href="#" id="roomFanRoomLink" class="room-link-item" target="_blank">💬 ファンルームページへ</a>
+                </div>
+            </div>
+            <button id="toggleSettings" style="font-size:0.9em; cursor:pointer; padding: 2px 8px;">設定</button>
+
+            <!-- 管理者からのお知らせ -->
+            <span id="adminNoticeSpan" class="admin-notice-blink"
+                style="display:none; margin-left:15px; background:#fff3e0; border:2px solid #ffb74d; color:#e65100; padding:3px 12px; border-radius:6px; font-size:0.9em; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:500px;">
+                📢 <span id="adminNoticeText"></span>
+            </span>
+
+            <div style="flex:1;"></div>
+
+            <!-- Zoom Controls -->
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
+                <button onclick="adjustZoom(-0.1)">➖</button>
+                <span id="zoomLevelDisplay" style="font-weight:bold; min-width: 40px; text-align: center;">100%</span>
+                <button onclick="adjustZoom(0.1)">➕</button>
+                <button onclick="resetZoom()" title="リセット">↺</button>
+            </div>
         </div>
         <div class="header-row">
             <span id="clockSpan" style="font-weight:bold; font-size:1.1em;">--:--:--</span>
             <button id="alarmSetBtn">アラームセット</button>
             <span id="alarmStatusSpan" style="color: #d00; display:none;">🔔 <span id="alarmTimeDisplay"></span></span>
+
+            <!-- 盛り上がり度（視聴者数）表示 -->
+            <span id="viewerCountSpan"
+                style="margin-left:15px; font-weight:bold; color:#555; display:flex; align-items:center;">
+                <span style="color:#ffd700; margin-right:3px;">⭐️</span>
+                <span id="viewerCountValue"
+                    style="min-width: 60px; text-align: right; border-bottom: 2px solid #888; padding: 0 4px; border-radius: 2px; background: rgba(0,0,0,0.03);">
+                    - </span>
+            </span>
+
+            <!-- 接続後ギフトポイント合計 -->
+            <span id="sessionGiftPointsSpan"
+                style="margin-left:15px; font-weight:bold; color:#555; display:flex; align-items:center;">
+                <span style="color:#e91e63; margin-right:3px;">🎁</span>
+                <span id="sessionGiftPointsValue"
+                    style="min-width: 100px; text-align: right; display: inline-block; border-bottom: 2px solid #888; padding: 0 4px; border-radius: 2px; background: rgba(0,0,0,0.03);">0</span>
+                pt
+            </span>
+
+            <span id="currentLiveStartedAtSpan"
+                style="margin-left:20px; font-size:0.9em; color:#666; font-weight:bold;">未配信</span>
+            <span id="currentLiveElapsedSpan"
+                style="margin-left:8px; font-size:0.9em; color:#666; font-weight:bold;">経過時間: -</span>
+
             <button id="pauseBtn" style="background:#ff9800; color:white; margin-left:10px; display:none;">⏸
                 通信停止</button>
         </div>
@@ -1143,8 +1425,10 @@
                     style="font-size:0.8em; background:#4CAF50; color:white; padding:5px 10px; border:none; border-radius:3px; cursor:pointer;">コメ抜チェック</button>
                 <h2 style="margin:0; font-size:1.2em;">コメント</h2>
                 <div style="display:flex; gap:5px;">
+                    <button id="showBookmarksBtn"
+                        style="font-size:0.8em; cursor:pointer; background:#FFD700; border:1px solid #e6c300; border-radius:3px; padding:5px 8px; font-weight:bold;">🔖
+                        しおり</button>
                     <button id="scrollTopBtn" style="font-size:0.8em; cursor:pointer;">先頭へ</button>
-                    <button id="toggleSettings" style="font-size:0.8em; cursor:pointer;">設定</button>
                 </div>
             </div>
             <div id="comment"></div>
@@ -1154,9 +1438,33 @@
 
         <!-- ギフト履歴モーダル -->
         <div id="giftHistoryModal" class="modal">
-            <h3>ギフト履歴 - <span id="giftHistoryUser"></span></h3>
+            <h3><span id="giftHistoryUser"></span> のギフト履歴</h3>
             <button id="closeGiftHistory" style="position:absolute; top:10px; right:10px; cursor:pointer;">✕</button>
             <div id="giftHistoryList" style="max-height:400px; overflow-y:auto; margin-top:10px;"></div>
+            <div class="modal-footer" id="giftHistoryFooter">
+                <span id="giftHistoryUserId">ID: -</span>
+                <span id="giftHistoryTotal" style="color:#d00; font-size:1.1em;">合計: 0pt</span>
+            </div>
+        </div>
+
+        <!-- しおりモーダル -->
+        <div id="bookmarkModal">
+            <h3>
+                <span>🔖 しおり一覧</span>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button id="clearBookmarksBtn"
+                        style="font-size:0.7em; cursor:pointer; background:#ff5252; color:white; border:none; padding:4px 8px; border-radius:4px; font-weight:bold;">🗑
+                        全削除</button>
+                    <button class="close-btn" id="closeBookmarkModal"
+                        style="cursor: pointer; font-size: 1.5em; color: #999; background: none; border: none; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">×</button>
+                </div>
+            </h3>
+            <div id="bookmarkList"></div>
+            <div
+                style="text-align:center; padding: 10px; color: #777; font-size: 0.8em; border-top: 1px solid #eee; background: #fafafa; border-radius: 0 0 12px 12px;">
+                <div style="font-weight:bold; color: #555;">💡 クリックで該当コメントまでジャンプします</div>
+                <div style="margin-top: 4px; color: #999;">※しおりはブラウザを閉じても保存されます</div>
+            </div>
         </div>
 
 
@@ -1234,15 +1542,80 @@
         </div>
     </div>
 
+    <script src="/js/event_ranking.js"></script>
     <script>
+        // ブラウザのオートフィル対策：初期化時に強制クリア
+        (function () {
+            const ri = document.getElementById("roomInput");
+            if (ri) ri.value = "";
+        })();
+
         let broadcastKey = null;
         let socket = null;
         let startedAt = null;
         let hbInterval = null;
         let reconnectTimeout = null;
 
+        // サーバー接続数管理用
+        let serverSocket = null;
+        function initServerConnection() {
+            if (serverSocket) return;
+            // ページと同じホスト・ポートの /ws に接続
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            serverSocket = new WebSocket(wsUrl);
+            serverSocket.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'connection_count') {
+                        // ヘッダーの表示を更新
+                        const elHeader = document.getElementById("serverConnValue");
+                        if (elHeader) elHeader.textContent = data.count;
+                        // 設定パネル内の表示を更新
+                        const elSettings = document.getElementById("settingsServerConnValue");
+                        if (elSettings) elSettings.textContent = data.count;
+                    }
+                    else if (data.type === 'admin_notice') {
+                        const noticeSpan = document.getElementById("adminNoticeSpan");
+                        const noticeText = document.getElementById("adminNoticeText");
+                        if (data.notice && data.notice.trim() !== "") {
+                            noticeText.textContent = "管理者からのお知らせ：" + data.notice;
+                            noticeSpan.style.display = "inline-block";
+                        } else {
+                            noticeSpan.style.display = "none";
+                        }
+                    }
+                } catch (err) { }
+            };
+            serverSocket.onclose = () => {
+                serverSocket = null;
+                setTimeout(initServerConnection, 5000); // 5秒後に再接続試行
+            };
+            serverSocket.onerror = () => {
+                if (serverSocket) serverSocket.close();
+            };
+        }
+        initServerConnection();
+
+        // 管理者お知らせ送信イベント
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'sendAdminNoticeBtn') {
+                const input = document.getElementById("adminNoticeInput");
+                const notice = input.value;
+                if (serverSocket && serverSocket.readyState === WebSocket.OPEN) {
+                    serverSocket.send(JSON.stringify({ type: 'send_admin_notice', notice: notice }));
+                    // input.value = ""; // クリアはあえてしない（確認のため）
+                } else {
+                    alert("サーバーに接続されていません。再試行してください。");
+                }
+            }
+        });
+
         // 高額ギフトユーザー集計 { userId: { totalPoints, totalCount, bestGift: {id, point, name}, gifts: { giftId: count } } }
         const userHighValueData = {};
+
+        // イベントランキング管理
+        window.eventRankingManager = new EventRankingManager("highValueGiftContainer");
 
         // アラーム用
         let alarmTime = null; // "HH:MM" string
@@ -1250,6 +1623,15 @@
 
         // t18メッセージ履歴 [{ message, color, time }]
         const t18MessageHistory = [];
+
+        // ブックマーク履歴 [{ id, u, ac, av, cm, time }]
+        let bookmarks = [];
+        try {
+            const savedBookmarks = localStorage.getItem('sr_comment_bookmarks');
+            if (savedBookmarks) bookmarks = JSON.parse(savedBookmarks);
+        } catch (e) { }
+
+        let commentCounter = 0;
 
         // 時計更新
         setInterval(() => {
@@ -1382,8 +1764,108 @@
         document.getElementById("alarmCancelBtn").onclick = closeAlarmModal;
         overlay.onclick = closeAlarmModal;
 
+        // Zoom Control
+        let currentZoom = 1.0;
+
+        function applyZoom() {
+            document.getElementById('zoomLevelDisplay').textContent = Math.round(currentZoom * 100) + '%';
+
+            // Apply Zoom
+            // Use 'zoom' property if supported (Chrome/Edge/PC)
+            // Use transform for others (iPad Safari which often ignores 'zoom' or handles it differently)
+            if (CSS.supports('zoom', '1')) {
+                document.body.style.zoom = currentZoom;
+            } else {
+                // Fallback for Safari/Firefox
+                document.body.style.transform = `scale(${currentZoom})`;
+                document.body.style.transformOrigin = "top left";
+                // 一度リセットしてから再設定
+                document.body.style.width = "";
+                document.body.style.height = "";
+                document.body.style.width = `${document.documentElement.clientWidth / currentZoom}px`;
+                document.body.style.height = `${document.documentElement.clientHeight / currentZoom}px`;
+            }
+
+            // ズーム変更時にカラム幅固定をリセットして、右側に余白ができないようにする
+            document.querySelectorAll('.column').forEach(col => {
+                col.style.flex = "";
+            });
+        }
+
+        window.adjustZoom = (delta) => {
+            currentZoom = Math.round((currentZoom + delta) * 10) / 10;
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            if (currentZoom > 1.5) currentZoom = 1.5;
+            applyZoom();
+        };
+
+        window.resetZoom = () => {
+            currentZoom = 1.0;
+            applyZoom();
+        };
+
         // 設定
-        let commentSettings = { size: 14, color: "#000000" };
+        let currentRoomId = null;
+        let currentEventData = null;
+        let currentEventPoints = { initial: null, current: null, lastUpdated: null };
+        let currentEventId = null;
+        let eventPointInterval = null;
+        let isPaused = false;
+        let sessionTotalGiftPoints = 0;
+        let connectionTargetId = null; // Race condition prevention
+
+        let commentSettings = { size: 14, color: "#000000", muteEnabled: false, muteSymbol: "", defaultRoomId: "", footerMode: "show_10k", giftMarkerDuration: 20 };
+
+        // Load settings from localStorage
+        try {
+            const savedSettings = localStorage.getItem('sr_comment_settings');
+            if (savedSettings) {
+                const parsed = JSON.parse(savedSettings);
+                commentSettings = { ...commentSettings, ...parsed };
+
+                // Initialize UI with saved settings
+                document.getElementById("commentFontSize").value = commentSettings.size;
+                document.getElementById("commentColor").value = commentSettings.color;
+                document.getElementById("muteEnabledCheckbox").checked = commentSettings.muteEnabled;
+                document.getElementById("muteSymbolInput").value = commentSettings.muteSymbol;
+                document.getElementById("defaultRoomIdInput").value = commentSettings.defaultRoomId || "";
+                if (document.getElementById("giftMarkerDurationInput")) {
+                    document.getElementById("giftMarkerDurationInput").value = commentSettings.giftMarkerDuration || 20;
+                }
+                if (document.getElementById("commentMarkerDurationInput")) {
+                    document.getElementById("commentMarkerDurationInput").value = commentSettings.commentMarkerDuration || 20;
+                }
+
+                // Apply initial styles
+                document.getElementById("comment").style.fontSize = commentSettings.size + "px";
+                document.getElementById("comment").style.color = commentSettings.color;
+
+                // Auto-connect on page load if ID exists
+                if (commentSettings.defaultRoomId) {
+                    setTimeout(() => {
+                        const roomInput = document.getElementById("roomInput");
+                        if (!roomInput.value) {
+                            roomInput.value = commentSettings.defaultRoomId;
+                            document.getElementById("switchRoom").click();
+                        }
+                    }, 1000);
+                }
+
+                // Apply footer mode
+                if (commentSettings.footerMode) {
+                    const radios = document.getElementsByName("footerDisplayMode");
+                    for (const r of radios) {
+                        if (r.value === commentSettings.footerMode) {
+                            r.checked = true;
+                            break;
+                        }
+                    }
+                    applyFooterMode();
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load settings:", e);
+        }
 
         // ギフト累積管理
         const paidGiftMap = {};
@@ -1403,8 +1885,357 @@
         // コメント重複チェック用 (comment_idまたはハッシュ値を保存)
         const receivedComments = new Set();
         let commentLogInterval = null;
-        let currentRoomId = null;
-        let isPaused = false; // 通信一時停止フラグ
+
+
+        // アバタールーム検索機能 (API経由でsearch_avatar.pyを実行)
+        window.searchAvatarRoom = async (avatarId) => {
+            if (!avatarId) {
+                alert("アバターIDが見つかりません");
+                return;
+            }
+            const aid = parseInt(avatarId);
+            if (isNaN(aid)) {
+                alert("無効なアバターIDです");
+                return;
+            }
+
+            // 検索中表示（ボタンのテキストを変えるなどのUX改善が可能だが、今回はAlert等で簡易対応も可。
+            // 実際は非同期なので何かインジケータがあったほうがいいが、window.openの挙動的に同期っぽく見せる。
+
+            try {
+                // 初期フォールバック（API通信前用）
+                let fallbackUrl = `https://www.sr-avatar.com/ava${Math.floor((aid - 1) / 100) * 100 + 1}.html`;
+
+                const res = await fetch(`/api/search_avatar?avatar_id=${aid}`);
+                if (!res.ok) {
+                    console.warn("Avatar Search API failed, using default fallback.");
+                    window.open(fallbackUrl, '_blank');
+                    return;
+                }
+
+                const json = await res.json();
+
+                // MakeAvatarなどの外部URL指定がある場合
+                if (json.external_url) {
+                    alert(json.error || "外部サイトへ移動します。");
+                    window.open(json.external_url, '_blank');
+                    return;
+                }
+
+                // APIが使用した正確な検索URLがあればそれをフォールバックとして採用
+                if (json.url || json.source_url) {
+                    fallbackUrl = json.url || json.source_url;
+                }
+
+                if (json.found && json.room_url) {
+                    // 特定成功 - 即座にルームを開く
+                    window.open(json.room_url, '_blank');
+                } else {
+                    // 見つからなかった場合 - 正しい一覧ページを開く
+                    console.warn(`Avatar room not found for ID ${aid}:`, json.error);
+                    window.open(fallbackUrl, '_blank');
+                }
+
+            } catch (e) {
+                console.error("Avatar search error:", e);
+                const pageStartNum = Math.floor((aid - 1) / 100) * 100 + 1;
+                const fallbackUrl = `https://www.sr-avatar.com/ava${pageStartNum}.html`;
+                window.open(fallbackUrl, '_blank');
+            }
+        };
+
+        // ライブ配信状態チェック (配信終了検知用)
+        async function checkLiveStatus(targetRoomId) {
+            const rid = targetRoomId || currentRoomId;
+            if (!rid) return;
+
+            try {
+                const res = await fetch(`/room_profile?room_id=${rid}`);
+                if (!res.ok) return; // エラー時は何もしない
+
+                const json = await res.json();
+
+                // 配信状態の変化を確認
+                const wasLive = (startedAt !== null);
+                const isLive = (json.current_live_started_at && json.current_live_started_at > 0);
+
+                if (wasLive && !isLive) {
+                    // 配信終了検知
+                    console.log("[LiveStatus] Stream Ended.");
+                    startedAt = null;
+                    document.getElementById("currentLiveStartedAtSpan").textContent = "配信終了";
+                    document.getElementById("currentLiveStartedAtSpan").style.color = "red";
+
+                    // ステータス更新
+                    setStatus("ended");
+
+                    // データは残すため、経過時間などのリセットは行わない
+
+                } else if (!wasLive && isLive) {
+                    // 配信開始検知 (リロードせずともUI更新)
+                    console.log("[LiveStatus] Stream Started.");
+                    startedAt = json.current_live_started_at * 1000;
+                    const d = new Date(startedAt);
+                    document.getElementById("currentLiveStartedAtSpan").textContent = `配信開始: ${d.toLocaleString()}`;
+                    document.getElementById("currentLiveStartedAtSpan").style.color = ""; // 色を戻す
+                }
+            } catch (e) {
+                // console.debug("checkLiveStatus error:", e);
+            }
+        }
+
+        // 盛り上がり度（視聴者数）更新
+        async function updateViewerCount(targetRoomId) {
+            // 引数で指定があればそれを優先、なければグローバル変数を参照
+            const rid = targetRoomId || currentRoomId;
+            if (!rid) return;
+
+            // ついでにライブ状態もチェックする (並行実行)
+            checkLiveStatus(rid);
+
+            try {
+                // ShowroomのPolling APIを利用
+                const res = await fetch(`/api/live_polling?room_id=${rid}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    // レスポンス構造: { online_user_num: 1234, ... }
+                    let num = null;
+                    if (json.online_user_num !== undefined) num = json.online_user_num;
+                    else if (json.polling && json.polling.online_user_num !== undefined) num = json.polling.online_user_num;
+
+                    if (num !== null) {
+                        document.getElementById("viewerCountValue").textContent = num.toLocaleString();
+                    }
+                }
+            } catch (e) {
+                // console.debug("updateViewerCount failed:", e);
+            }
+        }
+
+        // ポイント情報更新関数
+        async function updateEventPoints(targetRoomId) {
+            const rid = targetRoomId || currentRoomId;
+            if (!rid) return;
+
+            try {
+                const res = await fetch(`/api/event_points?room_id=${rid}`);
+                const json = await res.json();
+                console.log("[updateEventPoints] Response:", json);
+
+                // もしcurrentEventDataがない場合、APIレスポンスから取得を試みる
+                if (!currentEventData && json.event) {
+                    currentEventData = json.event;
+                    // イベント情報が取得できたのでフッター更新をトリガー
+                    applyFooterMode();
+                }
+
+                // イベント情報がなければ表示できないので終了
+                if (!currentEventData) return;
+
+                let point = null;
+
+                // 1. 通常のランキングイベント (event.ranking.point)
+                if (json.event && json.event.ranking && json.event.ranking.point !== undefined) {
+                    point = Number(json.event.ranking.point);
+                }
+                // 1b. 通常のランキングイベント (ranking.point - rare case or direct ranking API)
+                else if (json.ranking && json.ranking.point !== undefined) {
+                    point = Number(json.ranking.point);
+                }
+                // 2. クエスト形式イベント (event.quest.support.current_point)
+                else if (json.event && json.event.quest && json.event.quest.support && json.event.quest.support.current_point !== undefined) {
+                    point = Number(json.event.quest.support.current_point);
+                }
+                // 3. その他 (event.point)
+                else if (json.event && json.event.point !== undefined) {
+                    point = Number(json.event.point);
+                }
+
+                if (point !== null && !isNaN(point)) {
+                    if (currentEventPoints.initial === null) {
+                        currentEventPoints.initial = point;
+                    }
+                    currentEventPoints.current = point;
+                    currentEventPoints.lastUpdated = new Date();
+
+                    if (commentSettings.footerMode === "show_event") {
+                        applyFooterMode();
+                    }
+                } else {
+                    console.warn("[updateEventPoints] Point data missing or invalid format.");
+                }
+            } catch (e) {
+                console.warn("Event points update failed:", e);
+            }
+        }
+
+        // ポイント情報更新用タイマー
+
+        // フッター表示モード適用関数
+        function applyFooterMode() {
+            const mode = commentSettings.footerMode;
+            const container = document.getElementById("highValueGiftContainer");
+            const resizer = document.getElementById("resizer");
+
+            if (!container || !resizer) return;
+
+            // まず表示状態をリセット
+            container.innerHTML = "";
+            container.style.display = "flex";
+            resizer.style.display = "flex";
+
+            if (mode === "none") {
+                container.style.display = "none";
+                resizer.style.display = "none";
+                if (window.eventRankingManager) eventRankingManager.stop();
+            } else if (mode === "show_event") {
+                // eventRankingManager.stop(); // Do NOT stop manager here as it might be used in the sidebar
+                if (currentEventData) {
+                    // イベント情報表示
+                    container.style.flexDirection = "column";
+                    container.style.alignItems = "flex-start";
+                    container.style.justifyContent = "flex-start";
+                    container.style.padding = "5px";
+                    container.style.backgroundColor = "#fff";
+                    container.style.cursor = "default";
+                    container.onclick = null;
+
+                    const start = currentEventData.started_at ? new Date(currentEventData.started_at * 1000).toLocaleString() : "";
+                    const end = currentEventData.ended_at ? new Date(currentEventData.ended_at * 1000).toLocaleString() : "";
+                    const periodText = start && end ? `期間: ${start} 〜 ${end}` : "期間情報なし";
+
+                    const pInitial = currentEventPoints.initial !== null ? currentEventPoints.initial.toLocaleString() : "-";
+                    const pCurrent = currentEventPoints.current !== null ? currentEventPoints.current.toLocaleString() : "-";
+                    const pGain = (currentEventPoints.current !== null && currentEventPoints.initial !== null)
+                        ? (currentEventPoints.current - currentEventPoints.initial).toLocaleString()
+                        : "-";
+                    const tUpdate = currentEventPoints.lastUpdated ? currentEventPoints.lastUpdated.toLocaleTimeString() : "-";
+                    const eventUrl = currentEventData.url || "https://www.showroom-live.com";
+
+                    container.innerHTML = `
+                        <div style="font-size:0.85em; color:#444; margin-bottom:5px; font-weight:bold;">${periodText}</div>
+                        <div style="display:flex; flex-direction:row; width:100%; margin-bottom:5px; align-items:flex-start;">
+                            <div style="margin-right:10px;">
+                                <img src="${currentEventData.image}" 
+                                     onclick="window.open('${eventUrl}', '_blank')"
+                                     onmouseover="this.style.opacity='0.8'" 
+                                     onmouseout="this.style.opacity='1.0'"
+                                     style="max-height:90px; max-width:160px; object-fit:contain; border:1px solid #ddd; border-radius:4px; cursor:pointer;"
+                                     title="イベントページを開く">
+                            </div>
+                            <div style="flex:1; font-size:0.85em; color:#333;">
+                                <table style="width: auto; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="text-align:right; padding-right:8px; color:#666; white-space:nowrap;">接続時:</td>
+                                        <td style="text-align:right; font-weight:bold; min-width:90px;">${pInitial} pt</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align:right; padding-right:8px; color:#666; white-space:nowrap;">現在:</td>
+                                        <td style="text-align:right; font-weight:bold; min-width:90px;">${pCurrent} pt</td>
+                                    </tr>
+                                    <tr style="border-top:1px solid #ddd;">
+                                        <td style="text-align:right; padding-right:8px; color:#666; white-space:nowrap; padding-top:2px;">獲得:</td>
+                                        <td style="text-align:right; font-weight:bold; color:#d00; padding-top:2px; min-width:90px;">+${pGain} pt</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="text-align:right; font-size:0.8em; color:#999; padding-top:4px;">
+                                            更新: ${tUpdate}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div style="font-size:0.8em; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:98%;">
+                            ${currentEventData.event_name}
+                        </div>
+                    `;
+
+                } else {
+                    container.innerHTML = "<div style='padding:10px; color:#999;'>イベント情報がありません</div>";
+                }
+            } else if (mode === "show_ranking") {
+                if (currentRoomId) {
+                    // イベントランキング表示
+                    container.style.flexDirection = "column";
+                    container.style.alignItems = "stretch";
+                    container.style.justifyContent = "flex-start";
+                    container.style.padding = "0";
+                    container.style.backgroundColor = "#fff";
+                    container.style.cursor = "default";
+                    container.onclick = null;
+
+                    eventRankingManager.init(currentRoomId);
+                } else {
+                    container.innerHTML = "<div style='padding:10px; color:#999;'>ルームに接続してください</div>";
+                }
+            } else {
+                // show_10k
+                container.style.flexDirection = "row";
+                if (eventRankingManager) eventRankingManager.stop();
+                renderHighValueGiftsFromData();
+            }
+        }
+
+
+        // 高額ギフトデータの再描画（モード切替時用）
+        function renderHighValueGiftsFromData() {
+            const container = document.getElementById("highValueGiftContainer");
+            if (commentSettings.footerMode !== 'show_10k') return;
+
+            container.innerHTML = ""; // Clear current
+
+            // Re-create elements based on userHighValueData
+            // This is a simplified re-render. Ideally updateHighValueGiftDisplay handles add/update.
+            // We can iterate userHighValueData and call a render function.
+            // Since updateHighValueGiftDisplay logic is coupled with "new gift", we'll just replicate the rendering loop here.
+
+            Object.keys(userHighValueData).forEach(uid => {
+                const data = userHighValueData[uid];
+                if (data.totalPoints >= 10000) {
+                    // create element (Simplified version of createHighValueGiftElement)
+                    // Actually, better to just call updateHighValueGiftDisplay with dummy data? No.
+                    // Let's copy the creation logic or Refactor.
+                    const el = document.createElement("div");
+                    el.id = `high-value-${uid}`;
+                    const points = data.totalPoints;
+                    let borderClass = "silver";
+                    if (points >= 30000) borderClass = "gold";
+                    el.className = `high-value-gift-item ${borderClass}`;
+
+                    const topDiv = document.createElement("div");
+                    topDiv.className = "high-value-gift-top";
+
+                    const avatar = document.createElement("img");
+                    avatar.className = "avatar";
+                    avatar.src = `https://image.showroom-cdn.com/showroom-prod/image/avatar/${data.avatarId}.png`;
+                    avatar.title = data.userName;
+
+                    const giftIcon = document.createElement("img");
+                    giftIcon.className = "gift";
+                    giftIcon.src = `https://static.showroom-live.com/image/gift/${data.bestGift.id}_s.png?v=7`;
+                    giftIcon.title = data.bestGift.name;
+
+                    topDiv.appendChild(avatar);
+                    topDiv.appendChild(giftIcon);
+
+                    const countSpan = document.createElement("span");
+                    countSpan.className = "count";
+                    countSpan.textContent = `${Math.floor(points).toLocaleString()}pt`;
+
+                    el.appendChild(topDiv);
+                    el.appendChild(countSpan);
+
+                    // Click event
+                    el.style.cursor = "pointer";
+                    el.onclick = (e) => {
+                        showHighValuePopup(e, uid, data.userName, data.avatarId, data);
+                    };
+
+                    container.appendChild(el);
+                }
+            });
+            sortHighValueItems(); // 表示後にソートして位置を確定
+        }
 
 
 
@@ -1435,32 +2266,37 @@
         }
 
         document.getElementById("toggleSettings").onclick = () => {
-            if (settingsPanel.style.display === "none" || settingsPanel.style.display === "") {
+            // 安全のため都度取得
+            const panel = document.getElementById("settingsPanel");
+            if (!panel) return;
+
+            if (panel.style.display === "none" || panel.style.display === "") {
                 // まず表示
-                settingsPanel.style.display = "block";
+                panel.style.display = "block";
 
                 // リフローを強制
-                void settingsPanel.offsetHeight;
+                void panel.offsetHeight;
 
                 // パネルのサイズを取得
-                const panelWidth = settingsPanel.offsetWidth;
-                const panelHeight = settingsPanel.offsetHeight;
+                const panelWidth = panel.offsetWidth;
+                const panelHeight = panel.offsetHeight;
 
                 // 中央に配置（transformは使わない）
                 const centerLeft = Math.max(0, (window.innerWidth - panelWidth) / 2);
                 const centerTop = Math.max(0, (window.innerHeight - panelHeight) / 2);
 
-                settingsPanel.style.transform = "none";
-                settingsPanel.style.left = `${centerLeft}px`;
-                settingsPanel.style.top = `${centerTop}px`;
+                panel.style.transform = "none";
+                panel.style.left = `${centerLeft}px`;
+                panel.style.top = `${centerTop}px`;
             } else {
-                settingsPanel.style.display = "none";
+                panel.style.display = "none";
             }
         };
 
         document.getElementById("closeSettings").onclick = (e) => {
             e.stopPropagation(); // イベントのバブリングを防ぐ
-            settingsPanel.style.display = "none";
+            const panel = document.getElementById("settingsPanel");
+            if (panel) panel.style.display = "none";
         };
 
         // ✕ボタンのmousedownイベントでもバブリングを防ぐ
@@ -1470,19 +2306,72 @@
 
         // 設定適用
         document.getElementById("applyDisplaySettings").onclick = () => {
-            commentSettings.size = parseInt(document.getElementById("commentFontSize").value);
-            commentSettings.color = document.getElementById("commentColor").value;
+            try {
+                const fontSizeInput = document.getElementById("commentFontSize");
+                if (fontSizeInput) commentSettings.size = parseInt(fontSizeInput.value);
 
-            document.getElementById("comment").style.fontSize = commentSettings.size + "px";
-            document.getElementById("comment").style.color = commentSettings.color;
+                const colorInput = document.getElementById("commentColor");
+                if (colorInput) commentSettings.color = colorInput.value;
 
-            // テストモード（通信停止ボタン表示）切り替え
-            const isTestMode = document.getElementById("testModeCheckbox").checked;
-            document.getElementById("pauseBtn").style.display = isTestMode ? "inline-block" : "none";
-            document.getElementById("testButtons").style.display = isTestMode ? "block" : "none";
+                const muteCheck = document.getElementById("muteEnabledCheckbox");
+                if (muteCheck) commentSettings.muteEnabled = muteCheck.checked;
 
-            // パネルを閉じる
-            settingsPanel.style.display = "none";
+                const muteSymbol = document.getElementById("muteSymbolInput");
+                if (muteSymbol) commentSettings.muteSymbol = muteSymbol.value.trim();
+
+                const roomInput = document.getElementById("defaultRoomIdInput");
+                if (roomInput) commentSettings.defaultRoomId = roomInput.value.trim();
+
+                // Added checks for new inputs
+                const giftMarkerInput = document.getElementById("giftMarkerDurationInput");
+                if (giftMarkerInput) {
+                    commentSettings.giftMarkerDuration = parseInt(giftMarkerInput.value);
+                }
+                const commentMarkerInput = document.getElementById("commentMarkerDurationInput");
+                if (commentMarkerInput) {
+                    commentSettings.commentMarkerDuration = parseInt(commentMarkerInput.value);
+                }
+
+                // Footer Mode
+                const footerRadios = document.getElementsByName("footerDisplayMode");
+                for (const r of footerRadios) {
+                    if (r.checked) {
+                        commentSettings.footerMode = r.value;
+                        break;
+                    }
+                }
+
+                applyFooterMode();
+
+                const commentEl = document.getElementById("comment");
+                if (commentEl) {
+                    commentEl.style.fontSize = commentSettings.size + "px";
+                    commentEl.style.color = commentSettings.color;
+                }
+
+                // Save to localStorage
+                localStorage.setItem('sr_comment_settings', JSON.stringify(commentSettings));
+
+                // テストモード（通信停止ボタン表示）切り替え
+                // testModeCheckboxが存在しない場合は無視する（エラー回避）
+                const testModeCheckbox = document.getElementById("testModeCheckbox");
+                if (testModeCheckbox) {
+                    const isTestMode = testModeCheckbox.checked;
+                    const pauseBtn = document.getElementById("pauseBtn");
+                    if (pauseBtn) pauseBtn.style.display = isTestMode ? "inline-block" : "none";
+
+                    const testButtons = document.getElementById("testButtons");
+                    if (testButtons) testButtons.style.display = isTestMode ? "block" : "none";
+                }
+
+            } catch (e) {
+                console.error("Failed to apply settings:", e);
+                alert("設定の保存中にエラーが発生しました: " + e.message);
+            }
+
+            // パネルを閉じる (常に実行)
+            const panel = document.getElementById("settingsPanel");
+            if (panel) panel.style.display = "none";
         };
 
         // テストユーザー選択機能
@@ -1526,6 +2415,23 @@
                 created_at: Math.floor(Date.now() / 1000)
             };
             showComment(testComment);
+        };
+
+        // カスタムテストコメント送信
+        document.getElementById("testCommentSendBtn").onclick = () => {
+            const input = document.getElementById("testCommentInput");
+            const text = input.value;
+            if (!text) return;
+
+            const testComment = {
+                u: selectedTestUser.u,
+                ac: selectedTestUser.ac,
+                cm: text,
+                av: selectedTestUser.av,
+                created_at: Math.floor(Date.now() / 1000)
+            };
+            showComment(testComment);
+            input.value = ""; // 送信後クリア
         };
 
         // テストギフト機能
@@ -1625,16 +2531,38 @@
             };
         });
 
+        // 現在のRoom IDを設定ボタン
+        document.getElementById("useCurrentRoomIdBtn").onclick = () => {
+            // currentRoomId is a global variable from original logic (need to verify if it exists and is updated)
+            // Searching for currentRoomId usage... It was used in checkCommentBtn.
+            // If manual input usage, we might need to grab from input if currentRoomId is not reliable.
+            // But let's assume currentRoomId is updated on connect.
+            // If not connected, maybe grab from input box?
+            const roomInputVal = document.getElementById("roomInput").value;
+            if (roomInputVal) {
+                document.getElementById("defaultRoomIdInput").value = roomInputVal;
+            } else if (currentRoomId) {
+                document.getElementById("defaultRoomIdInput").value = currentRoomId;
+            } else {
+                alert("ルームに接続するか、IDを入力してください");
+            }
+        };
+
+        // 通信一時停止/再開ボタン
         // 通信一時停止/再開ボタン
         document.getElementById("pauseBtn").onclick = () => {
             isPaused = !isPaused;
             const btn = document.getElementById("pauseBtn");
+            const settingsBtn = document.getElementById("settingsPauseBtn");
+
             if (isPaused) {
                 btn.textContent = "▶ 通信再開";
                 btn.style.background = "#4CAF50";
+                if (settingsBtn) updatePauseButton(settingsBtn);
             } else {
                 btn.textContent = "⏸ 通信停止";
                 btn.style.background = "#ff9800";
+                if (settingsBtn) updatePauseButton(settingsBtn);
             }
         };
 
@@ -1729,6 +2657,11 @@
 
         // コメント表示
         function showComment(c) {
+            // Cloudflare連携用データ収集
+            if (c.u && c.ac) {
+                accumulateUserIdentity(c.u, c.ac);
+            }
+
             // "m" プロパティがある場合は特別表示（システムメッセージ、ファンレベルアップなど）
             if (c.m) {
                 const div = document.createElement("div");
@@ -1788,7 +2721,21 @@
             }
 
             // 通常のコメント表示
+            const commentId = `comment_${Date.now()}_${commentCounter++}`;
+
+            // Check mute filter - only for normal comments
+            if (commentSettings.muteEnabled && commentSettings.muteSymbol) {
+                if (c.cm && c.cm.startsWith(commentSettings.muteSymbol)) {
+                    // console.log(`[Muted] ${c.ac}: ${c.cm}`);
+                    return;
+                }
+            }
+
             const div = document.createElement("div");
+            div.id = commentId;
+            div.className = "comment-item";
+            div.dataset.u = c.u;
+            div.dataset.cm = c.cm;
             div.style.display = "flex";
             div.style.alignItems = "flex-start";   // 上揃え
             div.style.marginBottom = "5px";
@@ -1796,12 +2743,7 @@
             div.style.padding = "2px 5px";
             div.style.borderRadius = "5px";
             div.style.boxShadow = "1px 1px 3px #aaa";
-            div.style.cursor = "pointer"; // クリック可能にする
-
-            // クリックで履歴表示
-            div.onclick = () => {
-                showCommentHistory(c.u, c.ac, c.av);
-            };
+            div.style.transition = "background 0.5s"; // ジャンプ時の視覚効果用
 
             // アバター画像
             const img = document.createElement("img");
@@ -1810,6 +2752,10 @@
             img.style.height = "40px";
             img.style.marginRight = "5px";
             img.style.flexShrink = "0";
+            img.onclick = (e) => {
+                e.stopPropagation();
+                showCommentHistory(c.u, c.ac, c.av);
+            };
 
             // コメント名・本文ラッパー
             const wrapperDiv = document.createElement("div");
@@ -1834,8 +2780,23 @@
                 nameSpan.appendChild(marker);
             }
 
-            const nameText = document.createTextNode(c.ac);
+            const nameText = document.createElement("span");
+            nameText.textContent = c.ac;
             nameSpan.appendChild(nameText);
+
+            // Bookmark button
+            const bookmarkIcon = document.createElement("span");
+            bookmarkIcon.textContent = "🔖";
+            bookmarkIcon.className = "bookmark-btn";
+            // すでにブックマークされているかチェック
+            if (bookmarks.some(b => b.u === c.u && b.cm === c.cm)) {
+                bookmarkIcon.classList.add("active");
+            }
+            bookmarkIcon.onclick = (e) => {
+                e.stopPropagation();
+                toggleBookmark(c, commentId, bookmarkIcon);
+            };
+            nameSpan.appendChild(bookmarkIcon);
 
             const textP = document.createElement("p");
             textP.className = "comment-text";
@@ -1849,8 +2810,7 @@
             div.appendChild(img);
             div.appendChild(wrapperDiv);
 
-            // コメントをクリック可能に
-            div.style.cursor = "pointer";
+            // コメントをクリック可能に（履歴表示）
             div.onclick = () => {
                 showCommentHistory(c.u, c.ac, c.av);
             };
@@ -1883,8 +2843,202 @@
             const commentHash = `${c.u}_${c.cm}_${c.created_at || Date.now()}`;
             receivedComments.add(commentHash);
 
+            // コメントマーカー（赤バー）初期適用
+            div.dataset.receivedAt = Date.now();
+            div.classList.add("old-gift-border");
+
             document.getElementById("comment").prepend(div);
         }
+
+        // しおり関連機能
+        function toggleBookmark(c, elementId, iconEl) {
+            // 履歴から保存しようとした際、もし画面上に同じコメントがあればIDを取得
+            if (!elementId) {
+                const onScreen = document.querySelector(`.comment-item[data-u="${c.u}"][data-cm="${c.cm.replace(/"/g, '&quot;')}"]`);
+                if (onScreen) elementId = onScreen.id;
+            }
+
+            const index = bookmarks.findIndex(b => b.u === c.u && b.cm === c.cm);
+            let isActive = false;
+            if (index === -1) {
+                // 追加
+                bookmarks.push({
+                    id: elementId,
+                    u: c.u,
+                    ac: c.ac,
+                    av: c.av,
+                    cm: c.cm,
+                    time: Date.now()
+                });
+                isActive = true;
+            } else {
+                // 削除
+                bookmarks.splice(index, 1);
+                isActive = false;
+            }
+            localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+            // 表示されている全ての該当アイコンを更新
+            updateAllBookmarkIcons(c.u, c.cm, isActive);
+        }
+
+        // 画面上の全ての「しおり」アイコンの表示を同期させる
+        function updateAllBookmarkIcons(userId, commentText, isActive) {
+            // コメント欄のアイコン
+            const commentItems = document.querySelectorAll(`.comment-item[data-u="${userId}"][data-cm="${commentText.replace(/"/g, '&quot;')}"]`);
+            commentItems.forEach(item => {
+                const icon = item.querySelector(".bookmark-btn");
+                if (icon) {
+                    if (isActive) icon.classList.add("active");
+                    else icon.classList.remove("active");
+                }
+            });
+
+            // 履歴モーダル内のアイコン
+            const historyModal = document.getElementById("commentHistoryModal");
+            if (historyModal.classList.contains("show") && historyModal.getAttribute("data-user-id") == userId) {
+                const historyItems = document.querySelectorAll(".history-item");
+                historyItems.forEach(item => {
+                    const text = item.querySelector(".history-text")?.textContent;
+                    if (text === commentText) {
+                        const icon = item.querySelector(".bookmark-btn");
+                        if (icon) {
+                            if (isActive) {
+                                icon.classList.add("active");
+                                icon.style.opacity = "1";
+                            } else {
+                                icon.classList.remove("active");
+                                icon.style.opacity = "0.4";
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function showBookmarkList() {
+            const modal = document.getElementById("bookmarkModal");
+            const listDiv = document.getElementById("bookmarkList");
+            listDiv.innerHTML = "";
+
+            if (bookmarks.length === 0) {
+                listDiv.innerHTML = "<p style='text-align:center; color:#999; padding:20px;'>しおりはありません</p>";
+            } else {
+                // 時間順（新しい順）
+                [...bookmarks].reverse().forEach(b => {
+                    const item = document.createElement("div");
+                    item.className = "bookmark-item";
+                    item.onclick = () => jumpToComment(b);
+
+                    const avatar = document.createElement("img");
+                    avatar.className = "bookmark-item-avatar";
+                    avatar.src = `https://image.showroom-cdn.com/showroom-prod/image/avatar/${b.av}.png`;
+
+                    const content = document.createElement("div");
+                    content.className = "bookmark-item-content";
+
+                    const name = document.createElement("div");
+                    name.className = "bookmark-item-name";
+                    name.textContent = b.ac;
+
+                    const text = document.createElement("div");
+                    text.className = "bookmark-item-text";
+                    text.textContent = b.cm;
+
+                    content.appendChild(name);
+                    content.appendChild(text);
+
+                    const time = document.createElement("div");
+                    time.className = "bookmark-item-time";
+                    const date = new Date(b.time);
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    const hh = String(date.getHours()).padStart(2, '0');
+                    const mm = String(date.getMinutes()).padStart(2, '0');
+                    time.textContent = `${y}/${m}/${d} ${hh}:${mm}`;
+
+                    const remove = document.createElement("span");
+                    remove.className = "bookmark-item-remove";
+                    remove.innerHTML = "×";
+                    remove.onclick = (e) => {
+                        e.stopPropagation();
+                        removeBookmark(b.u, b.cm);
+                        showBookmarkList(); // 再描画
+                    };
+
+                    item.appendChild(avatar);
+                    item.appendChild(content);
+                    item.appendChild(time);
+                    item.appendChild(remove);
+                    listDiv.appendChild(item);
+                });
+            }
+
+            modal.style.display = "flex";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function removeBookmark(userId, comment) {
+            bookmarks = bookmarks.filter(b => !(b.u === userId && b.cm === comment));
+            localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+            // コメント一覧のアイコンを物理的に更新（見つかれば）
+            const commentItems = document.querySelectorAll(".comment-item");
+            commentItems.forEach(item => {
+                const nameText = item.querySelector(".comment-name span")?.textContent;
+                const commentText = item.querySelector(".comment-text")?.textContent;
+                if (nameText === "" || !commentText) return; // nameTextはc.acなので注意
+                // 厳密なチェックは難しいが、とりあえずブックマークアイコンのactiveを外す処理を検討
+            });
+            // 実際は showComment 内で描画されるときに active が付くので、
+            // 削除した瞬間に一覧を全部更新するのは重いかも。次回表示時や再描画で対応。
+        }
+
+        function jumpToComment(bookmark) {
+            let target = document.getElementById(bookmark.id);
+
+            // IDで見つからない場合、ユーザーIDと内容で画面内を再捜索
+            if (!target) {
+                target = document.querySelector(`.comment-item[data-u="${bookmark.u}"][data-cm="${bookmark.cm.replace(/"/g, '&quot;')}"]`);
+            }
+
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 強調表示
+                const originalBg = target.style.background;
+                target.style.background = "#fff9c4"; // 薄い黄色
+                setTimeout(() => {
+                    target.style.background = originalBg;
+                }, 2000);
+            } else {
+                alert("該当コメントは現在の表示一覧には見つかりませんでした。\n（読み込み制限で消えたか、ページ更新によりリセットされた可能性があります）");
+            }
+            // モーダルを閉じる
+            document.getElementById("bookmarkModal").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        function clearBookmarks() {
+            if (confirm("すべてのしおりを削除してもよろしいですか？")) {
+                bookmarks = [];
+                localStorage.setItem('sr_comment_bookmarks', JSON.stringify(bookmarks));
+
+                // コメント一覧のアイコンからactiveクラスをすべて除去
+                document.querySelectorAll(".bookmark-btn.active").forEach(el => {
+                    el.classList.remove("active");
+                });
+
+                showBookmarkList(); // 一覧を更新
+            }
+        }
+
+        document.getElementById("clearBookmarksBtn").onclick = clearBookmarks;
+        document.getElementById("showBookmarksBtn").onclick = showBookmarkList;
+        document.getElementById("closeBookmarkModal").onclick = () => {
+            document.getElementById("bookmarkModal").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        };
 
         // t18メッセージモーダルのコンテンツを更新
         function updateT18ModalContent() {
@@ -1990,29 +3144,57 @@
             const userSpan = document.getElementById("commentHistoryUser");
             const listDiv = document.getElementById("commentHistoryList");
 
-            // 位置を初期化(中央)
-            modal.style.left = "50%";
-            modal.style.top = "50%";
-            modal.style.transform = "translate(-50%, -50%)";
+            // すでに表示されている場合は位置リセットしない
+            if (!modal.classList.contains("show")) {
+                // 位置を初期化(中央)
+                modal.style.left = "50%";
+                modal.style.top = "50%";
+                modal.style.transform = "translate(-50%, -50%)";
 
-            // ドラッグ位置もリセット
-            modal.dataset.x = 0;
-            modal.dataset.y = 0;
-            // ドラッグ内部状態をリセットするためのイベント発火
-            window.dispatchEvent(new CustomEvent('resetDragState'));
+                // ドラッグ位置もリセット
+                modal.dataset.x = 0;
+                modal.dataset.y = 0;
+                // ドラッグ内部状態をリセットするためのイベント発火
+                window.dispatchEvent(new CustomEvent('resetDragState'));
+            }
 
             // アバター付きでユーザー名を表示
-            if (avatarId) {
-                const avatarImg = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${avatarId}.png" style="width:30px; height:30px; vertical-align:middle; margin-right:8px; border-radius:50%;">`;
-                userSpan.innerHTML = avatarImg + userName;
+            let currentAvatarId = avatarId;
+
+            // 引数にアバターIDがない場合、履歴から探す
+            if (!currentAvatarId) {
+                const history = commentHistory[userId] || [];
+                const itemWithAvatar = history.find(h => h.avatar);
+                if (itemWithAvatar) {
+                    currentAvatarId = itemWithAvatar.avatar;
+                }
+            }
+
+            let searchBtnHtml = "";
+            if (currentAvatarId) {
+                searchBtnHtml = `<button onclick="searchAvatarRoom(${currentAvatarId})" style="margin-left:10px; font-size:0.75em; cursor:pointer; background:#eee; border:1px solid #ccc; padding:2px 6px; border-radius:4px; vertical-align:middle;">🔍 アバタールーム検索</button>`;
+            }
+
+            if (currentAvatarId) {
+                const avatarImg = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${currentAvatarId}.png" style="width:30px; height:30px; vertical-align:middle; margin-right:8px; border-radius:50%;">`;
+                userSpan.innerHTML = avatarImg + userName + searchBtnHtml;
             } else {
-                userSpan.textContent = userName;
+                userSpan.innerHTML = userName + searchBtnHtml; // アバター画像なしでもIDさえ履歴にあればボタン出す
             }
 
             listDiv.innerHTML = "";
 
             // 現在表示中のユーザーIDを保存
             modal.setAttribute("data-user-id", userId);
+
+            // ユーザーIDをフッターに表示
+            document.getElementById("commentHistoryUserId").textContent = `ID: ${userId}`;
+
+            // 名前履歴エリアが表示されていたらリセット
+            const historyArea = document.getElementById("commentHistoryModal-history-area");
+            if (historyArea) {
+                historyArea.remove();
+            }
 
             const history = commentHistory[userId] || [];
             if (history.length === 0) {
@@ -2024,7 +3206,28 @@
 
                     const timeDiv = document.createElement("div");
                     timeDiv.className = "history-time";
+                    timeDiv.style.display = "flex";
+                    timeDiv.style.alignItems = "center";
+                    timeDiv.style.gap = "5px";
                     timeDiv.textContent = item.time.toLocaleTimeString();
+
+                    const bookmarkIcon = document.createElement("span");
+                    bookmarkIcon.textContent = "🔖";
+                    bookmarkIcon.className = "bookmark-btn";
+                    bookmarkIcon.style.fontSize = "1.1em";
+                    bookmarkIcon.style.opacity = "0.4";
+                    bookmarkIcon.style.padding = "0";
+                    // すでにしおり登録されているかチェック
+                    if (bookmarks.some(b => b.u === userId && b.cm === item.text)) {
+                        bookmarkIcon.classList.add("active");
+                        bookmarkIcon.style.opacity = "1";
+                    }
+                    bookmarkIcon.onclick = (e) => {
+                        e.stopPropagation();
+                        const commentData = { u: userId, ac: item.name, av: item.avatar, cm: item.text };
+                        toggleBookmark(commentData, null, bookmarkIcon);
+                    };
+                    timeDiv.appendChild(bookmarkIcon);
 
                     const textDiv = document.createElement("div");
                     textDiv.className = "history-text";
@@ -2058,21 +3261,44 @@
 
 
 
-            // 位置を初期化(中央)
-            modal.style.left = "50%";
-            modal.style.top = "50%";
-            modal.style.transform = "translate(-50%, -50%)";
+            // 現在表示中のIDを保存（リアルタイム更新用）
+            modal.setAttribute("data-user-id", userId);
 
-            // ドラッグ位置もリセット
-            modal.dataset.x = 0;
-            modal.dataset.y = 0;
-            // ドラッグ内部状態をリセットするためのイベント発火
-            window.dispatchEvent(new CustomEvent('resetDragState'));
+            // すでに表示されている場合は位置リセットしない
+            if (!modal.classList.contains("show")) {
+                // 位置を初期化(中央)
+                modal.style.left = "50%";
+                modal.style.top = "50%";
+                modal.style.transform = "translate(-50%, -50%)";
 
-            userSpan.textContent = userName;
+                // ドラッグ位置もリセット
+                modal.dataset.x = 0;
+                modal.dataset.y = 0;
+                // ドラッグ内部状態をリセットするためのイベント発火
+                window.dispatchEvent(new CustomEvent('resetDragState'));
+            }
+
+            // アバター画像とユーザー名を設定
+            // 履歴の最新アイテムからアバターを取得（あれば）
+            const history = giftHistory[userId] || [];
+            let avatarHtml = "";
+            // アバターIDを持つ最新の履歴を探す
+            const latestAvItem = history.find(h => h.av);
+            if (latestAvItem) {
+                avatarHtml = `<img src="https://image.showroom-cdn.com/showroom-prod/image/avatar/${latestAvItem.av}.png" style="width:30px; height:30px; border-radius:50%; margin-right:8px; vertical-align:middle; border:1px solid #ddd;">`;
+            }
+            // もし履歴にアバターがない場合、既存のロジックでアバター取得を試みるか、
+            // または引数でavatarIdを受け取るように変更するのがベストだが、今回は履歴データから復元
+
+            let searchBtnHtml = "";
+            let latestAvId = latestAvItem ? latestAvItem.av : null;
+            if (latestAvId) {
+                searchBtnHtml = `<button onclick="searchAvatarRoom(${latestAvId})" style="margin-left:10px; font-size:0.75em; cursor:pointer; background:#eee; border:1px solid #ccc; padding:2px 6px; border-radius:4px; vertical-align:middle;">🔍 アバタールーム検索</button>`;
+            }
+
+            userSpan.innerHTML = avatarHtml + userName + searchBtnHtml;
             listDiv.innerHTML = "";
 
-            const history = giftHistory[userId] || [];
             if (history.length === 0) {
                 listDiv.innerHTML = "<p style='text-align:center; color:#999;'>ギフト履歴がありません</p>";
             } else {
@@ -2085,6 +3311,8 @@
                     const timeDiv = document.createElement("div");
                     timeDiv.className = "gift-history-time";
                     timeDiv.textContent = item.time.toLocaleTimeString();
+
+                    // リストアイテムごとのアバター表示は削除（上部に移動したため）
 
                     const giftDiv = document.createElement("div");
                     giftDiv.className = "gift-history-gift";
@@ -2127,16 +3355,21 @@
                     listDiv.appendChild(itemDiv);
                 });
 
-                // 合計ポイント表示
-                const totalDiv = document.createElement("div");
-                totalDiv.style.marginTop = "15px";
-                totalDiv.style.padding = "10px";
-                totalDiv.style.borderTop = "2px solid #4CAF50";
-                totalDiv.style.textAlign = "right";
-                totalDiv.style.fontWeight = "bold";
-                totalDiv.style.fontSize = "1.1em";
-                totalDiv.textContent = `合計: ${Math.floor(totalPoints).toLocaleString()}pt`;
-                listDiv.appendChild(totalDiv);
+                // 合計ポイントをフッターに表示
+                document.getElementById("giftHistoryTotal").textContent = `合計: ${Math.floor(totalPoints).toLocaleString()}pt`;
+            } // Close the main else block
+
+            // 常にIDを表示（履歴有無に関わらず）
+            document.getElementById("giftHistoryUserId").textContent = `ID: ${userId}`;
+
+            // 名前履歴エリアが表示されていたらリセット
+            const historyArea = document.getElementById("giftHistoryModal-history-area");
+            if (historyArea) {
+                historyArea.remove();
+            }
+
+            if (history.length === 0) {
+                document.getElementById("giftHistoryTotal").textContent = `合計: 0pt`;
             }
 
             modal.classList.add("show");
@@ -2278,9 +3511,10 @@
             let xOffset = 0;
             let yOffset = 0;
 
-            header.addEventListener("mousedown", dragStart);
-            document.addEventListener("mousemove", drag);
-            document.addEventListener("mouseup", dragEnd);
+            // ドラッグ機能を無効化（固定表示）
+            // header.addEventListener("mousedown", dragStart);
+            // document.addEventListener("mousemove", drag);
+            // document.addEventListener("mouseup", dragEnd);
 
             function dragStart(e) {
                 if (e.target.id === "closeSettings" || e.target.closest("#closeSettings")) {
@@ -2378,13 +3612,18 @@
 
         // ギフト表示（累積）
         function showGift(g) {
+            // Cloudflare連携用データ収集
+            if (g.u && g.ac) {
+                accumulateUserIdentity(g.u, g.ac);
+            }
+
             const gt = parseInt(g.gt);
             let containerId, giftMap;
 
             // 無料ギフト（gt===2）
             if (gt === 2) {
-                if (g.g === 3000421 || g.g === 3000421) {
-                    // 星（ID:3000421, 3000421）
+                if (g.g >= 3000421 && g.g <= 3000425) {
+                    // 星（ID:3000421-3000425）
                     containerId = "freeStar";
                     giftMap = freeStarMap;
                 } else {
@@ -2399,6 +3638,8 @@
                 giftMap = paidGiftMap;
             }
 
+            const now = Date.now();
+
 
             const key = `${g.u}_${g.g}`;
 
@@ -2406,6 +3647,11 @@
                 const item = giftMap[key];
                 item.count += g.n;
                 item.time = Date.now();
+
+                // タイムスタンプ更新（指定秒数以内の強調表示）
+                // 無料ギフトも含めて全て対象
+                item.div.dataset.receivedAt = now;
+                item.div.classList.add("old-gift-border"); // 更新時はボーダーを表示（復活）
 
                 // ギフト履歴に追加（更新時も）
                 const giftInfo = giftMasterData[g.g];
@@ -2419,7 +3665,8 @@
                     giftId: g.g,
                     giftName: giftInfo ? giftInfo.name : `ギフトID:${g.g}`,
                     count: g.n,
-                    type: giftType
+                    type: giftType,
+                    av: g.av
                 });
                 if (giftHistory[g.u].length > 100) {
                     giftHistory[g.u].pop();
@@ -2453,6 +3700,12 @@
                     const countSpan = textP.querySelector(".gift-count");
                     if (countSpan) {
                         countSpan.textContent = `${item.count}個`;
+                    }
+                    const priceSpan = textP.querySelector(".gift-unit-price");
+                    if (priceSpan && giftMasterData[g.g]) {
+                        const info = giftMasterData[g.g];
+                        const unit = info.free ? "pt" : "SG";
+                        priceSpan.textContent = `(@ ${info.point} ${unit})`;
                     }
                 }
 
@@ -2498,7 +3751,8 @@
                 giftId: g.g,
                 giftName: giftInfo ? giftInfo.name : `ギフトID:${g.g}`,
                 count: g.n,
-                type: giftType
+                type: giftType,
+                av: g.av
             });
             // 最大100件まで保持
             if (giftHistory[g.u].length > 100) {
@@ -2545,9 +3799,21 @@
             countSpan.className = "gift-count";
             countSpan.textContent = `${g.n}個`;
 
+            const priceSpan = document.createElement("span");
+            priceSpan.className = "gift-unit-price";
+            priceSpan.style.fontSize = "0.85em";
+            priceSpan.style.color = "#888";
+            priceSpan.style.marginLeft = "8px";
+            if (giftMasterData[g.g]) {
+                const info = giftMasterData[g.g];
+                const unit = info.free ? "pt" : "SG";
+                priceSpan.textContent = `(@ ${info.point} ${unit})`;
+            }
+
             textP.appendChild(giftImg);
             textP.appendChild(multiplySpan);
             textP.appendChild(countSpan);
+            textP.appendChild(priceSpan);
 
             contentDiv.appendChild(nameSpan);
             contentDiv.appendChild(textP);
@@ -2561,7 +3827,66 @@
 
             // 高額ギフトチェック
             checkAndDisplayHighValueGift(g.u, g.ac, g.av, g.g, g.n);
+
+            // 全てのギフトでタイムスタンプ更新とボーダー表示
+            div.dataset.receivedAt = Date.now();
+            div.classList.add("old-gift-border"); // 新規作成時はボーダーを表示
         }
+
+        // ギフトの経過時間チェック（設定秒数以内は表示、過ぎたら消す）
+        setInterval(() => {
+            const now = Date.now();
+            const giftDuration = (commentSettings.giftMarkerDuration || 20) * 1000;
+            const commentDuration = (commentSettings.commentMarkerDuration || 20) * 1000;
+            const containerIds = ["paidGift", "freeStar", "freeOther"];
+
+            // Gift Check
+            containerIds.forEach(id => {
+                const container = document.getElementById(id);
+                if (!container) return;
+
+                // getElementsByClassNameはLiveCollectionなので高速
+                const items = container.getElementsByClassName("giftItem");
+                for (let item of items) {
+                    const receivedAt = parseInt(item.dataset.receivedAt);
+                    if (receivedAt) {
+                        if (now - receivedAt < giftDuration) {
+                            if (!item.classList.contains("old-gift-border")) {
+                                item.classList.add("old-gift-border");
+                            }
+                        } else {
+                            if (item.classList.contains("old-gift-border")) {
+                                item.classList.remove("old-gift-border");
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Comment Check
+            const commentContainer = document.getElementById("comment");
+            if (commentContainer) {
+                const items = commentContainer.getElementsByClassName("comment-item");
+                // 最適化: 新しいものから見ていき、期限切れが見つかったらそれ以降も期限切れの可能性が高い（が、prependなので逆か？）
+                // prependで追加されているなら、上にあるものが新しい。
+                // 全数チェックでも数が少なければ問題ないが、古いのから消すべきか。
+                // LiveCollectionなのでループ中の削除は注意が必要だが、今回はclass操作のみなので安全。
+                for (let item of items) {
+                    const receivedAt = parseInt(item.dataset.receivedAt);
+                    if (receivedAt) {
+                        if (now - receivedAt < commentDuration) {
+                            if (!item.classList.contains("old-gift-border")) {
+                                item.classList.add("old-gift-border");
+                            }
+                        } else {
+                            if (item.classList.contains("old-gift-border")) {
+                                item.classList.remove("old-gift-border");
+                            }
+                        }
+                    }
+                }
+            }
+        }, 1000);
 
         // ギフトポイント計算関数
         function calculateGiftPoints(giftId, count, isFree, basePoint) {
@@ -2629,15 +3954,27 @@
             // 1回の投稿のポイント計算
             const pointsThisGift = calculateGiftPoints(giftId, count, giftInfo.free, giftInfo.point);
 
+            // セッション合計ポイント加算 & 表示更新
+            sessionTotalGiftPoints += pointsThisGift;
+            const sessionPointsEl = document.getElementById("sessionGiftPointsValue");
+            if (sessionPointsEl) {
+                sessionPointsEl.textContent = sessionTotalGiftPoints.toLocaleString();
+            }
+
             // ユーザーごとの集計データを初期化
             if (!userHighValueData[userId]) {
                 userHighValueData[userId] = {
                     totalPoints: 0,
                     totalCount: 0, // 全ギフトの合計個数
+                    userName: userName,
+                    avatarId: avatarId,
                     bestGift: { id: 0, point: -1, name: "" },
                     gifts: {} // giftId: { count: 0, points: 0, info: ... }
                 };
             }
+            // ユーザー名やアバターが変わる可能性があるため、常に最新を上書き
+            userHighValueData[userId].userName = userName;
+            userHighValueData[userId].avatarId = avatarId;
 
             const userData = userHighValueData[userId];
             userData.totalPoints += pointsThisGift;
@@ -2672,6 +4009,9 @@
         }
 
         function updateHighValueDisplay(userId, userName, avatarId, userData) {
+            // モードが 'show_10k'（高額ギフト表示）でない場合は表示更新しない
+            if (commentSettings.footerMode !== 'show_10k') return;
+
             const container = document.getElementById("highValueGiftContainer");
             const itemId = `high-value-${userId}`;
             let itemDiv = document.getElementById(itemId);
@@ -2918,6 +4258,62 @@
                 contentDiv.appendChild(row);
             });
 
+            // 過去の名前履歴セクション
+            const historyTitle = document.createElement("div");
+            historyTitle.style.marginTop = "10px";
+            historyTitle.style.fontSize = "0.9em";
+            historyTitle.style.fontWeight = "bold";
+            historyTitle.style.borderTop = "1px solid #eee";
+            historyTitle.style.paddingTop = "5px";
+            historyTitle.textContent = "名前履歴:";
+            contentDiv.appendChild(historyTitle);
+
+            const historyContent = document.createElement("div");
+            historyContent.style.fontSize = "0.85em";
+            historyContent.style.color = "#555";
+            historyContent.textContent = "読み込み中...";
+            contentDiv.appendChild(historyContent);
+
+            // 非同期で取得
+            fetchPastNames(userId).then(data => {
+                historyContent.innerHTML = "";
+
+                // データ形式: { uid: "...", names: [ { name: "...", last_seen: ... }, ... ] } または配列
+                let names = [];
+                if (data) {
+                    if (Array.isArray(data)) names = data;
+                    else if (data.names) names = data.names;
+                }
+
+                if (names.length === 0) {
+                    historyContent.textContent = "履歴なし";
+                } else {
+                    names.forEach(item => {
+                        const div = document.createElement("div");
+                        div.style.marginBottom = "2px";
+
+                        let nameStr = "";
+                        let timeStr = "";
+
+                        if (typeof item === 'string') {
+                            nameStr = item;
+                        } else {
+                            nameStr = item.name;
+                            if (item.last_seen) {
+                                timeStr = new Date(item.last_seen).toLocaleString();
+                            }
+                        }
+
+                        // 現在の名前と同じでも表示する (ユーザー要望)
+                        div.innerHTML = `<span style="font-weight:bold;">${nameStr}</span>`;
+                        if (timeStr) {
+                            div.innerHTML += `<br><span style="font-size:0.8em; color:#999;">${timeStr}</span>`;
+                        }
+                        historyContent.appendChild(div);
+                    });
+                }
+            });
+
             // ポップアップ表示位置計算
             popup.classList.add("show");
             const popupRect = popup.getBoundingClientRect();
@@ -2944,18 +4340,45 @@
             span.className = "";
             if (status === "connecting") { span.textContent = "Status: 再接続中"; span.classList.add("connecting"); }
             else if (status === "connected") { span.textContent = "Status: 接続中"; span.classList.add("connected"); }
+            else if (status === "ended") { span.textContent = "Status: 配信終了切断"; span.classList.add("disconnected"); }
             else { span.textContent = "Status: 切断"; span.classList.add("disconnected"); }
         }
 
         // 接続
         async function connectRoom(roomId) {
             if (!roomId) return;
+            // Set target immediately to invalidate previous in-flight calls
+            connectionTargetId = roomId;
+            currentRoomId = roomId; // Update global ID immediately to prevent races in applyFooterMode
+
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
 
             // リセット
             startedAt = null;
             document.getElementById("currentLiveStartedAtSpan").textContent = "未配信";
             document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+
+            // 既存の接続・タイマーを即座に停止
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+                socket = null;
+            }
+            if (eventPointInterval) {
+                clearInterval(eventPointInterval);
+                eventPointInterval = null;
+            }
+            if (window.viewerCountInterval) {
+                clearInterval(window.viewerCountInterval);
+                window.viewerCountInterval = null;
+            }
+
+            // イベント情報リセットとランキング初期化
+            currentEventData = null;
+            if (window.eventRankingManager) {
+                window.eventRankingManager.reset();
+                // window.eventRankingManager.init(roomId); // REMOVE: User settings (applyFooterMode) should decide this
+            }
 
             try {
                 setStatus("connecting");
@@ -2964,6 +4387,8 @@
                 try {
                     const profileRes = await fetch(`/room_profile?room_id=${roomId}`);
                     const profileJson = await profileRes.json();
+                    if (connectionTargetId !== roomId) return; // Stale check
+
                     if (profileJson.current_live_started_at) {
                         startedAt = profileJson.current_live_started_at * 1000;
                         const startedAtDate = new Date(startedAt);
@@ -2976,15 +4401,55 @@
                     }
 
                     if (profileJson.room_name) {
-                        document.getElementById("roomNameSpan").textContent = "Room: " + profileJson.room_name;
+                        const roomName = profileJson.room_name;
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: " + roomName;
+                        document.getElementById("roomLinksHint").style.display = "inline";
+
+                        // リンクを更新
+                        document.getElementById("roomProfileLink").href = `https://www.showroom-live.com/room/profile?room_id=${roomId}`;
+                        document.getElementById("roomFanRoomLink").href = `https://www.showroom-live.com/room/fan_club?room_id=${roomId}`;
                     } else {
-                        document.getElementById("roomNameSpan").textContent = "Room: -";
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: -";
+                        document.getElementById("roomLinksHint").style.display = "none";
                     }
+
+                    // イベント情報取得・更新
+
+                    // セッションログリセット
+                    sessionTotalGiftPoints = 0;
+                    if (document.getElementById("sessionGiftPointsValue")) {
+                        document.getElementById("sessionGiftPointsValue").textContent = "0";
+                    }
+                    if (document.getElementById("viewerCountValue")) {
+                        document.getElementById("viewerCountValue").textContent = "-";
+                    }
+
+                    // 視聴者数定期更新
+                    updateViewerCount(roomId); // Pass roomId explicitly for immediate update
+                    window.viewerCountInterval = setInterval(() => updateViewerCount(roomId), 60000);
+
+                    // イベント情報設定 (room_profileにあれば優先)
+                    if (profileJson.event) {
+                        currentEventData = profileJson.event;
+                    }
+                    // なければ null にはせず、updateEventPointsでの取得に期待する (ただし初期化は必要かもしれない)
+                    // 既存ロジックとの兼ね合いで、もし確実に無いとわかっているならnullにすべきだが、
+                    // ユーザー要望の「取得しにいってほしい」を満たすため、あえてnull初期化は遅らせるか、updateEventPointsに任せる。
+                    // ここでは、明示的に event がない場合でも updateEventPoints を走らせる。
+
+                    currentEventPoints = { initial: null, current: null, lastUpdated: null };
+
+                    updateEventPoints(roomId);
+                    eventPointInterval = setInterval(() => updateEventPoints(roomId), 60000);
+
+                    // 接続時に強制的にモードが変わらないよう、現在の設定を維持して適用
+                    applyFooterMode();
                 } catch (e) {
                     console.warn("room_profile取得失敗:", e);
                     startedAt = null;
                     document.getElementById("currentLiveStartedAtSpan").textContent = "未配信";
                     document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+                    applyFooterMode(); // エラー時も設定されたモードを適用
                 }
 
                 // ギフトリスト取得
@@ -3013,15 +4478,12 @@
                 }
 
                 // コメントログポーリング開始
-                currentRoomId = roomId;
                 startCommentLogPolling(roomId);
 
                 const res = await fetch(`/get_broadcast_key?room_id=${roomId}`);
                 const json = await res.json();
                 if (!json.broadcast_key) { alert("broadcast_key取得失敗"); return; }
                 broadcastKey = json.broadcast_key;
-
-                if (socket) socket.close();
 
                 socket = new WebSocket("wss://online.showroom-live.com");
                 socket.onopen = () => {
@@ -3051,8 +4513,31 @@
                         document.getElementById("currentLiveStartedAtSpan").textContent =
                             `配信開始: ${startedAtDate.toLocaleString()}`;
                     }
-                    if (obj.main_name) document.getElementById("roomNameSpan").textContent = "Room: " + obj.main_name;
+                    if (obj.main_name) {
+                        const roomName = obj.main_name;
+                        document.getElementById("roomNameSpan").textContent = "🏠 ROOM: " + roomName;
+                        document.getElementById("roomLinksHint").style.display = "inline";
+
+                        // リンクを更新
+                        document.getElementById("roomProfileLink").href = `https://www.showroom-live.com/room/profile?room_id=${roomId}`;
+                        document.getElementById("roomFanRoomLink").href = `https://www.showroom-live.com/room/fan_club?room_id=${roomId}`;
+                    }
                 };
+
+                // Room Name クリックでメニュー表示
+                const roomTrigger = document.getElementById("roomLinksTrigger");
+                const roomDropdown = document.getElementById("roomLinksDropdown");
+
+                roomTrigger.onclick = (e) => {
+                    e.stopPropagation();
+                    const isShow = roomDropdown.style.display === "block";
+                    roomDropdown.style.display = isShow ? "none" : "block";
+                };
+
+                // 画面クリックでメニューを閉じる
+                document.addEventListener("click", () => {
+                    roomDropdown.style.display = "none";
+                });
 
                 socket.onclose = (event) => {
                     console.log("WebSocket closed:", event.code, event.reason);
@@ -3068,6 +4553,7 @@
 
 
             } catch (e) {
+                if (connectionTargetId !== roomId) return; // Don't reconnect if target changed
                 console.error(e);
                 setStatus("disconnected");
                 // 5秒後に再接続
@@ -3165,18 +4651,92 @@
                 const s = diff % 60;
                 document.getElementById("currentLiveElapsedSpan").textContent = `経過時間: ${h}時間 ${m}分 ${s}秒`;
             } else {
-                document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+                // document.getElementById("currentLiveElapsedSpan").textContent = "経過時間: -";
+                // 配信終了後も最後の時間を表示し続けるため、リセットしない
             }
         }, 1000);
 
         // ルーム切替ボタン
-        document.getElementById("switchRoom").onclick = () => {
-            const newRoomId = document.getElementById("roomInput").value.trim();
-            if (newRoomId) connectRoom(newRoomId);
+        // ルーム切替ボタン
+        document.getElementById("switchRoom").onclick = async () => {
+            const input = document.getElementById("roomInput").value.trim();
+            if (!input) return;
+
+            let roomId = input;
+
+            // URLかどうか判定
+            if (input.includes("showroom-live.com")) {
+                // ボタンを一時的に無効化（処理中）
+                const btn = document.getElementById("switchRoom");
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = "解析中...";
+
+                try {
+                    // 1. ?room_id=XXXX パターン (プロフィールURLなど)
+                    const idMatch = input.match(/room_id=(\d+)/);
+                    if (idMatch) {
+                        roomId = idMatch[1];
+                        document.getElementById("roomInput").value = roomId; // IDに書き換え
+                    } else {
+                        // 2. URLキーパターン (ライブURL)
+                        // 例: https://www.showroom-live.com/key
+                        // 例: https://www.showroom-live.com/r/key
+                        const urlObj = new URL(input.startsWith('http') ? input : `https://${input}`);
+                        const pathParts = urlObj.pathname.split('/').filter(p => p);
+                        let key = "";
+
+                        if (pathParts.length > 0) {
+                            if (pathParts[0] === 'r' && pathParts.length >= 2) {
+                                key = pathParts[1];
+                            } else {
+                                key = pathParts[pathParts.length - 1];
+                            }
+                        }
+
+                        if (key) {
+                            // サーバー経由でID取得
+                            const res = await fetch(`/room_id_by_key?key=${key}`);
+                            const json = await res.json();
+                            if (json.room_id) {
+                                roomId = json.room_id;
+                                document.getElementById("roomInput").value = roomId; // IDに書き換え
+                            } else {
+                                alert("ルームIDが見つかりませんでした (キー: " + key + ")");
+                                btn.disabled = false;
+                                btn.textContent = originalText;
+                                return;
+                            }
+                        } else {
+                            alert("URLからルームキーを特定できませんでした");
+                            btn.disabled = false;
+                            btn.textContent = originalText;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error("URL解析エラー:", e);
+                    alert("URLの解析に失敗しました: " + e.message);
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+
+            // 数字以外が含まれている場合（URL以外で）は警告なしでconnectRoomに任せるが、一応チェック
+            if (roomId && /^\d+$/.test(roomId)) {
+                connectRoom(roomId);
+            } else {
+                alert("有効なルームIDではありません: " + roomId);
+            }
         };
 
         // 初期ルーム
-        connectRoom(490133);
+        // 初期ルーム接続は行わない（ユーザー操作または設定読み込み待ち）
+        // connectRoom(490133);
         // リサイズ機能
         const resizer = document.getElementById("resizer");
         const bottomPanel = document.getElementById("highValueGiftContainer");
@@ -3212,8 +4772,41 @@
             }
         });
 
+        // Touch support for bottom resizer
+        resizer.addEventListener("touchstart", (e) => {
+            if (e.cancelable) e.preventDefault(); // Prevent scroll/zoom
+            isResizing = true;
+            startY = e.touches[0].clientY;
+            startHeight = parseInt(document.defaultView.getComputedStyle(bottomPanel).height, 10);
+            document.body.style.userSelect = "none";
+        }, { passive: false });
+
+        document.addEventListener("touchmove", (e) => {
+            if (!isResizing) return;
+            if (e.cancelable) e.preventDefault(); // Stop scrolling
+            const dy = startY - e.touches[0].clientY;
+            const newHeight = startHeight + dy;
+
+            if (newHeight > 50 && newHeight < window.innerHeight - 150) {
+                bottomPanel.style.height = `${newHeight}px`;
+            }
+        }, { passive: false });
+
+        document.addEventListener("touchend", () => {
+            isResizing = false;
+            document.body.style.userSelect = "";
+        });
+
         // カラムリサイズ機能
         document.querySelectorAll('.col-resizer').forEach(resizer => {
+            const isLastColumn = (el) => {
+                let next = el.nextElementSibling;
+                while (next) {
+                    if (next.classList.contains('column')) return false;
+                    next = next.nextElementSibling;
+                }
+                return true;
+            };
             resizer.addEventListener('mousedown', (e) => {
                 let leftCol = resizer.previousElementSibling;
                 while (leftCol && !leftCol.classList.contains('column')) {
@@ -3240,7 +4833,12 @@
                     // 最小幅チェック (50px)
                     if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
                         leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
-                        rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        // 最後のカラムなら自動幅にして余白を埋める
+                        if (!isLastColumn(rightCol)) {
+                            rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        } else {
+                            rightCol.style.flex = "";
+                        }
                     }
                 };
 
@@ -3254,6 +4852,50 @@
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             });
+
+            // Touch support for column resizers
+            resizer.addEventListener('touchstart', (e) => {
+                if (e.cancelable) e.preventDefault(); // Prevent default touch actions like scroll
+
+                let leftCol = resizer.previousElementSibling;
+                while (leftCol && !leftCol.classList.contains('column')) {
+                    leftCol = leftCol.previousElementSibling;
+                }
+                let rightCol = resizer.nextElementSibling;
+                while (rightCol && !rightCol.classList.contains('column')) {
+                    rightCol = rightCol.nextElementSibling;
+                }
+                if (!leftCol || !rightCol) return;
+
+                const startX = e.touches[0].clientX;
+                const startLeftWidth = leftCol.getBoundingClientRect().width;
+                const startRightWidth = rightCol.getBoundingClientRect().width;
+
+                document.body.style.userSelect = 'none';
+
+                const onTouchMove = (e) => {
+                    if (e.cancelable) e.preventDefault();
+
+                    const dx = e.touches[0].clientX - startX;
+                    if (startLeftWidth + dx > 50 && startRightWidth - dx > 50) {
+                        leftCol.style.flex = `0 0 ${startLeftWidth + dx}px`;
+                        if (!isLastColumn(rightCol)) {
+                            rightCol.style.flex = `0 0 ${startRightWidth - dx}px`;
+                        } else {
+                            rightCol.style.flex = "";
+                        }
+                    }
+                };
+
+                const onTouchEnd = () => {
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
+                document.addEventListener('touchend', onTouchEnd);
+            }, { passive: false });
         });
 
 
@@ -3310,12 +4952,449 @@
             }
         });
         // ウィンドウリサイズ時に設定パネルの位置を調整
+        let resizeTimer;
         window.addEventListener("resize", () => {
-            if (settingsPanel.style.display === "block") {
-                adjustSettingsPanelPosition();
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (settingsPanel.style.display === "block") {
+                    adjustSettingsPanelPosition();
+                }
+
+                // 画面回転時などにカラム幅固定により右側に余白ができるのを防ぐため、幅設定をリセット
+                document.querySelectorAll('.column').forEach(col => {
+                    col.style.flex = "";
+                });
+
+                // ズーム再適用
+                applyZoom();
+            }, 200);
+        });
+
+
+        // ==========================================
+        // Cloudflare Integration Logic
+        // ==========================================
+        let cfWorkerUrl = localStorage.getItem('cf_worker_url') || 'https://userid-names.geten777.workers.dev';
+        let cfSendInterval = parseInt(localStorage.getItem('cf_send_interval')) || 30;
+        let cfIntervalTimer = null;
+        let nextSendTime = null;
+        const userIdentityMap = new Map();
+
+        // Initialize Input Fields
+        const cfUrlInput = document.getElementById('cfWorkerUrl');
+        const cfIntervalInput = document.getElementById('cfSendInterval');
+        if (cfUrlInput) cfUrlInput.value = cfWorkerUrl;
+        if (cfIntervalInput) cfIntervalInput.value = cfSendInterval;
+
+        function updateCfStatusDisplay() {
+            const statusEl = document.getElementById('cfStatus');
+            if (!statusEl) return;
+            const count = userIdentityMap.size;
+            if (cfIntervalTimer !== null) {
+                let timeStr = nextSendTime ? nextSendTime.toLocaleTimeString() : '不明';
+                statusEl.innerHTML = `<span style="color:green; font-weight:bold;">[稼働中]</span> 待機: ${count}件 (次回: ${timeStr})`;
+            } else {
+                statusEl.innerHTML = `<span style="color:red; font-weight:bold;">[停止中]</span> 待機: ${count}件`;
+            }
+        }
+
+        async function sendToCloudflare() {
+            if (!cfWorkerUrl) return;
+            const payload = Array.from(userIdentityMap.entries()).map(([uid, data]) => ({
+                uid: uid, name: data.name, last_seen: data.last_seen
+            }));
+
+            if (payload.length === 0) {
+                updateCfStatusDisplay();
+                if (cfIntervalTimer) scheduleNextSend();
+                return;
+            }
+
+            console.log(`[Cloudflare] Sending ${payload.length} users...`);
+            document.getElementById('cfStatus').innerHTML = `<span style="color:orange;">送信中... (${payload.length}件)</span>`;
+
+            try {
+                // Use Proxy
+                const res = await fetch('/api/proxy_cf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: cfWorkerUrl,
+                        action: 'save_users',
+                        users: payload
+                    })
+                });
+
+                const now = new Date();
+                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+                if (res.ok) {
+                    console.log(`[Cloudflare] Sent successfully.`);
+                    userIdentityMap.clear();
+                    document.getElementById('cfStatus').innerHTML = `<span style="color:blue; font-weight:bold;">送信成功 (${payload.length}件 ${timeStr})</span>`;
+                } else {
+                    document.getElementById('cfStatus').innerHTML = `<span style="color:red;">送信失敗 (${res.status})</span>`;
+                }
+            } catch (e) {
+                console.error('[Cloudflare] Send Error:', e);
+                document.getElementById('cfStatus').innerHTML = `<span style="color:red;">送信エラー</span>`;
+            } finally {
+                if (cfIntervalTimer) {
+                    scheduleNextSend();
+                    // Wait a bit then update status back to waiting
+                    setTimeout(updateCfStatusDisplay, 5000);
+                }
+            }
+        }
+
+        function scheduleNextSend() {
+            if (cfSendInterval > 0) {
+                nextSendTime = new Date(Date.now() + cfSendInterval * 60 * 1000);
+            }
+        }
+
+        function startCfTimer() {
+            if (cfIntervalTimer) clearInterval(cfIntervalTimer);
+            if (cfWorkerUrl && cfSendInterval > 0) {
+                console.log(`[Cloudflare] Timer started: Every ${cfSendInterval} mins`);
+                scheduleNextSend();
+                cfIntervalTimer = setInterval(() => {
+                    sendToCloudflare();
+                    scheduleNextSend();
+                }, cfSendInterval * 60 * 1000);
+                updateCfStatusDisplay();
+            } else {
+                nextSendTime = null;
+                cfIntervalTimer = null;
+                updateCfStatusDisplay();
+            }
+        }
+
+        // Accumulate data hook (needs to be called from showComment/showGift)
+        function accumulateUserIdentity(uid, name) {
+            if (!uid || !name) return;
+            userIdentityMap.set(String(uid), { name: name, last_seen: Date.now() });
+            updateCfStatusDisplay();
+        }
+
+        async function fetchPastNames(uid) {
+            if (!cfWorkerUrl || !uid) return null;
+            try {
+                const targetUrl = `${cfWorkerUrl}?action=get_names&uid=${uid}`;
+                // Use GET request for proxy so that it forwards as GET to the Worker
+                const res = await fetch(`/api/proxy_cf?url=${encodeURIComponent(targetUrl)}`);
+
+                if (res.ok) {
+                    return await res.json();
+                }
+            } catch (e) {
+                console.error("fetchPastNames error:", e);
+            }
+            return null;
+        }
+
+        // 取得した履歴データのキャッシュ
+        const fetchedHistoryCache = new Map();
+
+        // 履歴表示ロジック
+        async function toggleNameHistory(modalId, footerId, uid) {
+            const footer = document.getElementById(footerId);
+            const historyId = modalId + "-history-area";
+            let historyArea = document.getElementById(historyId);
+
+            // 既に表示されている場合は削除（トグル）
+            if (historyArea) {
+                historyArea.remove();
+                return;
+            }
+
+            // 新規作成
+            historyArea = document.createElement("div");
+            historyArea.id = historyId;
+            historyArea.style.background = "#fff3e0";
+            historyArea.style.padding = "10px";
+            historyArea.style.fontSize = "0.9em";
+            historyArea.style.borderTop = "1px solid #ddd";
+            historyArea.style.maxHeight = "150px";
+            historyArea.style.overflowY = "auto";
+
+            // ヘッダーエリア（タイトルと再取得ボタン）
+            const headerDiv = document.createElement("div");
+            headerDiv.style.display = "flex";
+            headerDiv.style.justifyContent = "space-between";
+            headerDiv.style.alignItems = "center";
+            headerDiv.style.marginBottom = "5px";
+
+            const titleSpan = document.createElement("span");
+
+            const refreshBtn = document.createElement("button");
+            refreshBtn.textContent = "再取得";
+            refreshBtn.style.fontSize = "0.8em";
+            refreshBtn.style.padding = "2px 8px";
+            refreshBtn.style.cursor = "pointer";
+            refreshBtn.onclick = async () => {
+                // キャッシュをクリアして再実行
+                fetchedHistoryCache.delete(uid);
+                await loadAndRenderHistory(uid, listContainer, titleSpan);
+            };
+
+            headerDiv.appendChild(titleSpan);
+            headerDiv.appendChild(refreshBtn);
+            historyArea.appendChild(headerDiv);
+
+            // リストコンテナ
+            const listContainer = document.createElement("div");
+            historyArea.appendChild(listContainer);
+
+            // フッターの直前に挿入
+            footer.parentNode.insertBefore(historyArea, footer);
+
+            // データの読み込みと表示
+            await loadAndRenderHistory(uid, listContainer, titleSpan);
+        }
+
+        async function loadAndRenderHistory(uid, container, titleLabel) {
+            container.innerHTML = "取得中...";
+            titleLabel.textContent = "過去のユーザー名";
+
+            let histories;
+
+            // キャッシュ確認
+            if (fetchedHistoryCache.has(uid)) {
+                histories = fetchedHistoryCache.get(uid);
+                console.log("Using cached history for", uid);
+            } else {
+                histories = await fetchPastNames(uid);
+                if (histories) {
+                    fetchedHistoryCache.set(uid, histories);
+                }
+            }
+
+            container.innerHTML = "";
+
+            if (histories && Array.isArray(histories) && histories.length > 0) {
+                const ul = document.createElement("ul");
+                ul.style.listStyle = "none";
+                ul.style.padding = "0";
+                ul.style.margin = "0";
+
+                // 新しい順に表示
+                histories.reverse().forEach(h => {
+                    const li = document.createElement("li");
+                    li.style.borderBottom = "1px solid #eee";
+                    li.style.padding = "3px 0";
+                    const date = new Date(h.date).toLocaleString();
+                    li.textContent = `${date} : ${h.name}`;
+                    ul.appendChild(li);
+                });
+                container.appendChild(ul);
+            } else {
+                container.textContent = "名前変更履歴はありません。";
+            }
+        }
+
+        // クリックイベント登録
+        document.getElementById("commentHistoryUserId").onclick = function () {
+            const modal = document.getElementById("commentHistoryModal");
+            const uid = modal.getAttribute("data-user-id");
+            if (uid) toggleNameHistory("commentHistoryModal", "commentHistoryFooter", uid);
+        };
+
+        document.getElementById("giftHistoryUserId").onclick = function () {
+            // テキストからUID取得 (ID: 12345)
+            const text = this.textContent;
+            const uid = text.replace("ID: ", "").trim();
+            if (uid && uid !== "-") toggleNameHistory("giftHistoryModal", "giftHistoryFooter", uid);
+        };
+
+        // Event Listeners
+        // Event Listeners
+        document.getElementById('cfSaveBtn')?.addEventListener('click', () => {
+            const url = document.getElementById('cfWorkerUrl').value.trim();
+            const interval = parseInt(document.getElementById('cfSendInterval').value);
+            if (url && interval > 0) {
+                cfWorkerUrl = url;
+                cfSendInterval = interval;
+                localStorage.setItem('cf_worker_url', cfWorkerUrl);
+                localStorage.setItem('cf_send_interval', cfSendInterval);
+                localStorage.setItem('cf_auto_send_enabled', 'true'); // Save enable state
+                startCfTimer();
+                alert('設定を保存し、タイマーを開始しました。');
+            } else {
+                alert('有効なURLと間隔を入力してください。');
+            }
+        });
+
+        document.getElementById('cfForceSendBtn')?.addEventListener('click', async () => {
+            if (!cfWorkerUrl) return alert('URL未設定');
+            const btn = document.getElementById('cfForceSendBtn');
+            btn.disabled = true;
+            await sendToCloudflare();
+            btn.disabled = false;
+        });
+
+        document.getElementById('cfStopBtn')?.addEventListener('click', () => {
+            if (cfIntervalTimer) clearInterval(cfIntervalTimer);
+            cfIntervalTimer = null;
+            localStorage.setItem('cf_auto_send_enabled', 'false'); // Save disable state
+            updateCfStatusDisplay();
+            alert('自動送信を停止しました。');
+        });
+
+        // Initialize from localStorage
+        (function initCloudflareSettings() {
+            const savedUrl = localStorage.getItem('cf_worker_url');
+            const savedInterval = localStorage.getItem('cf_send_interval');
+            const autoSend = localStorage.getItem('cf_auto_send_enabled');
+
+            if (savedUrl) {
+                cfWorkerUrl = savedUrl;
+                const el = document.getElementById('cfWorkerUrl');
+                if (el) el.value = savedUrl;
+            }
+            if (savedInterval) {
+                cfSendInterval = parseInt(savedInterval);
+                const el = document.getElementById('cfSendInterval');
+                if (el) el.value = savedInterval;
+            }
+
+            if (autoSend === 'true' && cfWorkerUrl && cfSendInterval > 0) {
+                console.log("[Cloudflare] Auto-start enabled from storage.");
+                startCfTimer();
+            }
+        })();
+
+        // Cloudflare Test Connection
+        document.getElementById('cfTestConnBtn')?.addEventListener('click', async () => {
+            const url = document.getElementById('cfWorkerUrl').value.trim();
+            if (!url) {
+                alert('URLを入力してください');
+                return;
+            }
+            const btn = document.getElementById('cfTestConnBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'テスト中...';
+            btn.disabled = true;
+
+            try {
+                // Test Data for Cloudflare Proxy
+                const testData = {
+                    url: url,
+                    action: 'save_users',
+                    users: [
+                        { uid: 'test_user_001', name: 'Test User ' + new Date().toLocaleTimeString(), last_seen: Date.now() }
+                    ]
+                };
+
+                // Use Proxy API
+                const res = await fetch('/api/proxy_cf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+
+                if (res.ok) {
+                    const json = await res.json();
+                    const output = `接続成功:\n${JSON.stringify(json, null, 2)}`;
+                    document.getElementById('cfTestResult').textContent = output;
+                } else {
+                    const output = `接続失敗: Status ${res.status}`;
+                    document.getElementById('cfTestResult').textContent = output;
+                }
+            } catch (e) {
+                const output = `エラー: ${e.message}\n(サーバーログも確認してください)`;
+                document.getElementById('cfTestResult').textContent = output;
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // 設定パネル初期化・イベントハンドラ
+        // iframeや動的生成要素のため、イベント委譲または存在チェックが必要
+        // SettingsPanel生成後に実行される想定
+
+        function setupSettingsHandlers() {
+            // 初期値セット
+            const durationInput = document.getElementById("giftMarkerDurationInput");
+            if (durationInput) {
+                durationInput.value = commentSettings.giftMarkerDuration || 20;
+            }
+
+            // 通信停止・再開ボタン (タブ3)
+            const pauseBtn = document.getElementById("settingsPauseBtn");
+            if (pauseBtn) {
+                updatePauseButton(pauseBtn);
+                pauseBtn.onclick = () => {
+                    isPaused = !isPaused;
+                    if (isPaused) {
+                        console.log("通信停止 (User requested)");
+                        setStatus("paused"); // "切断"などの表示変更
+                    } else {
+                        console.log("通信再開 (User requested)");
+                        if (currentRoomId) {
+                            // すぐに"接続中"にするのではなく、実際の状態をチェックして更新
+                            if (startedAt) {
+                                setStatus("connected");
+                            } else {
+                                setStatus("disconnected"); // または "ready" など、非配信中の状態
+                                // 念のため再チェックを走らせる
+                                if (currentRoomId) {
+                                    console.log("Re-checking live status for:", currentRoomId);
+                                    checkLiveStatus(currentRoomId);
+                                    // 状態が更新されるまで少し待つか、disconnectedのまま待機
+                                    // checkLiveStatus内でstartedAtが更新されれば次のpollingでconnectedになる
+                                }
+                            }
+                        } else {
+                            setStatus("disconnected");
+                        }
+                    }
+                    updatePauseButton(pauseBtn);
+                };
+            }
+        }
+
+        function updatePauseButton(btn) {
+            if (isPaused) {
+                btn.textContent = "通信を再開する";
+                btn.style.background = "#4CAF50"; // Green
+            } else {
+                btn.textContent = "通信を停止する";
+                btn.style.background = "#FF5722"; // Orange/Red
+            }
+        }
+
+        // SettingsPanelは同期的に生成されるはずなので、ここでセットアップ
+        // もし生成がdelayedなら、setTimeoutなどで待つ
+        setTimeout(setupSettingsHandlers, 500);
+
+        // 閉じるボタンの処理は SettingsPanel 内で委譲されていない場合があるのでここでも確認
+        document.addEventListener("click", (e) => {
+            if (e.target.id === "closeSettings") {
+                const panel = document.getElementById("settingsPanel");
+                if (panel) panel.style.display = "none";
             }
         });
     </script>
+    <!-- Cloudflare integration Info Modal -->
+    <div id="info-modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-info-modal">&times;</span>
+            <h3 id="info-modal-title">Info</h3>
+            <div id="info-modal-content"></div>
+
+            <div id="past-names-section"
+                style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #eee; display:none;">
+                <h4 style="margin: 0 0 10px 0;">過去の名前履歴 (D1)</h4>
+                <div style="text-align:right; margin-bottom:5px;">
+                    <button id="fetch-past-names-btn"
+                        style="padding:5px 10px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer;">履歴取得</button>
+                </div>
+                <div id="past-names-list"></div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

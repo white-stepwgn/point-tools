@@ -1745,3 +1745,54 @@ window.requestAssignRoom = function (roomId, name, points) {
 // Check every 30 seconds
 setInterval(updateEventRankingFromWindow1, 30000);
 
+// ==========================================
+// Global Server Stats Connection (Added)
+// ==========================================
+(function initServerStats() {
+    let globalSocket = null;
+    let reconnectTimer = null;
+
+    function connectGlobalWs() {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        globalSocket = new WebSocket(`${protocol}//${location.host}/ws`);
+
+        globalSocket.onopen = () => {
+            console.log('[GlobalWS] Connected for stats.');
+            // Send a ping periodically to keep alive if needed, or just wait for broadcasts
+        };
+
+        globalSocket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'connection_count') {
+                    // Update Header UI
+                    // Expected format: data.connected_users, data.active_screens
+                    const elStats = document.getElementById('server-stats');
+                    if (elStats) {
+                        elStats.innerHTML = `💻 ${data.connected_users} <span style="font-size:0.8em; margin-left:5px;">🚪 ${data.active_screens}</span>`;
+                    }
+                }
+            } catch (e) {
+                // Ignore non-JSON or other messages
+            }
+        };
+
+        globalSocket.onclose = () => {
+            // console.log('[GlobalWS] Closed. Reconnecting in 5s...');
+            globalSocket = null;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectGlobalWs, 5000);
+        };
+
+        globalSocket.onerror = (e) => {
+            // console.warn('[GlobalWS] Error:', e);
+        };
+    }
+
+    // Start connection
+    connectGlobalWs();
+})();
+
+
+// Initialize Monitors
+// ... (rest of the file is handled by existing code or user actions)
