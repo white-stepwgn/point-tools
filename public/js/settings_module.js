@@ -43,7 +43,7 @@ window.SettingsPanel = class SettingsPanel {
         if (existing) existing.remove();
 
         const html = `<div id="${this.panelId}"
-            style="display:none !important; top: 50%; left: 50%; transform: translate(-50%, -50%); position: fixed; margin: 0; min-width: 340px; z-index: 99999 !important; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+            style="display:none !important; top: 50%; left: 50%; transform: translate(-50%, -50%); position: fixed; margin: 0; min-width: 460px; z-index: 99999 !important; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
             <div id="settingsHeader"
                 style="background: #eee; padding: 8px 12px; cursor: default; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-weight: bold;">設定</span>
@@ -59,7 +59,7 @@ window.SettingsPanel = class SettingsPanel {
                 <div class="settings-tab" id="settingsTab4Trigger" data-target="tab4" style="flex:1; padding:10px; text-align:center; cursor:pointer; border-right:1px solid #ddd; background:#f0f0f0; color:#666; border-bottom: 2px solid transparent; display:none;">チャット</div>
             </div>
 
-            <div style="padding: 15px; max-height: 70vh; overflow-y: auto;">
+            <div style="padding: 15px;">
                 <!-- ============================ TAB 1 ============================ -->
                 <div id="tab1" class="settings-content" style="display:block;">
 
