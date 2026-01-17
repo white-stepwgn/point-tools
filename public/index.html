@@ -5985,8 +5985,10 @@
                     copyBtn.onclick = () => {
                         const textElem = document.getElementById("currentLiveKaraokeText");
                         if (textElem && textElem.textContent) {
-                            navigator.clipboard.writeText(textElem.textContent).then(() => {
-                                showToast(`「${textElem.textContent}」をコピーしました`, "success");
+                            // Remove "♪ " if present
+                            const cleanText = textElem.textContent.replace(/^♪\s*/, '');
+                            navigator.clipboard.writeText(cleanText).then(() => {
+                                showToast(`「${cleanText}」をコピーしました`, "success");
                             }).catch(() => showToast("コピー失敗", "error"));
                         }
                     };
