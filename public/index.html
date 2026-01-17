@@ -4552,6 +4552,7 @@
                     if (obj.cm) showComment(obj);
                     else if (obj.g) showGift(obj);
                     else if (obj.t === 18 && obj.m) showComment(obj); // ファンレベルアップメッセージ
+                    else if (obj.t === 101) { obj.m = obj.cm || obj.m; showComment(obj); } // 荒らし報告などのシステムメッセージ
                     // current_live_started_atが設定されていない場合のみ、WebSocketからのstarted_atを使用
                     if (!startedAt && obj.started_at) {
                         startedAt = obj.started_at * 1000;

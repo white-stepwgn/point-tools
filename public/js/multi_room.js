@@ -600,6 +600,15 @@ class RoomMonitor {
                     accumulateUserIdentity(obj.u, obj.ac);
                 }
 
+                // Handle valid comments/messages (t=101)
+                if (obj.t == 101) {
+                    // Extract message content, usually in 'cm' or 'm'
+                    const msg = obj.cm || obj.m;
+                    if (msg) {
+                        this.addSystemMessage(msg, 'orange');
+                    }
+                }
+
                 if (obj.g) {
                     this.processGift(obj);
                 }
@@ -799,6 +808,26 @@ class RoomMonitor {
             void el.offsetWidth;
             el.classList.add('jump');
         }
+    }
+
+    addSystemMessage(message, color) {
+        const div = document.createElement('div');
+        div.style.gridColumn = '1 / -1'; // Span all columns
+        div.style.width = '100%';
+        div.style.padding = '4px';
+        div.style.marginBottom = '2px';
+        div.style.boxSizing = 'border-box';
+
+        div.style.color = color || 'orange';
+        div.style.fontWeight = 'bold';
+        div.style.fontSize = '0.9em';
+        div.style.textAlign = 'left';
+        div.style.wordBreak = 'break-all';
+        div.style.borderBottom = '1px solid #eee';
+
+        div.textContent = message;
+
+        this.ui.log.prepend(div);
     }
 
     addLog(gift, points) {
