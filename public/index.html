@@ -1292,7 +1292,7 @@
     <!-- 設定パネル（JSで動的生成されます） -->
     <!-- settingsPanel removed, will be injected by settings_module.js -->
 
-    <script src="./js/settings_module.js?v=20260113_2"></script>
+    <script src="./js/settings_module.js?v=20260113_3"></script>
     <script>
         // DOM構築のタイミングを待たずに即時実行したいが、bodyはまだパース途中。
         // ただし、このscriptタグより上にはまだ要素が無いので、bodyへの追加は問題ないはずだが、
@@ -1423,6 +1423,15 @@
                 style="margin-left:20px; font-size:0.9em; color:#666; font-weight:bold;">未配信</span>
             <span id="currentLiveElapsedSpan"
                 style="margin-left:8px; font-size:0.9em; color:#666; font-weight:bold;">経過時間: -</span>
+
+            <!-- カラオケ情報（ヘッダー用） -->
+            <span id="currentLiveKaraokeSpan"
+                style="margin-left:15px; font-size:0.9em; color:#333; font-weight:bold; display:none; align-items:center;">
+                <span style="color:#E91E63; margin-right:3px;">🎤</span>
+                <span id="currentLiveKaraokeText"></span>
+                <button id="currentLiveKaraokeCopyBtn"
+                    style="margin-left:8px; padding:2px 8px; font-size:0.9em; cursor:pointer; background:#2196F3; color:white; border:none; border-radius:3px;">コピー</button>
+            </span>
 
             <button id="pauseBtn" style="background:#ff9800; color:white; margin-left:10px; display:none;">⏸
                 通信停止</button>
@@ -5891,6 +5900,9 @@
                 renderContent(null, null, true);
 
                 const fetchTelop = async () => {
+                    // Expose globally for immediate refresh
+                    window.fetchTelopGlobal = fetchTelop;
+
                     const targetId = window.currentRoomId || (typeof currentRoomId !== 'undefined' ? currentRoomId : null);
                     if (!targetId) {
                         renderContent(null, null, true); // Reset to waiting
@@ -5918,6 +5930,20 @@
 
                         renderContent(karaokeText, telopText, false);
 
+                        // ヘッダーカラオケ情報更新
+                        const headerKSpan = document.getElementById("currentLiveKaraokeSpan");
+                        const headerKText = document.getElementById("currentLiveKaraokeText");
+                        const showHeaderKaraoke = localStorage.getItem("header_karaoke_enabled") === "true";
+
+                        if (headerKSpan && headerKText) {
+                            if (showHeaderKaraoke && karaokeText) {
+                                headerKSpan.style.display = "inline-flex";
+                                headerKText.textContent = karaokeText;
+                            } else {
+                                headerKSpan.style.display = "none";
+                            }
+                        }
+
                         // Schedule
                         const interval = json.interval && json.interval > 0 ? json.interval : 10000;
                         if (window.footerTelopTimer) clearTimeout(window.footerTelopTimer);
@@ -5943,6 +5969,31 @@
                 setTimeout(() => window.applyFooterMode(savedMode), 500);
             }
 
+            // ヘッダーカラオケ設定復元
+            setTimeout(() => {
+                const savedHeaderK = localStorage.getItem("header_karaoke_enabled");
+                const headerKCheck = document.getElementById("headerKaraokeEnabledCheckbox");
+                if (headerKCheck && savedHeaderK !== null) {
+                    headerKCheck.checked = (savedHeaderK === "true");
+                }
+            }, 1000);
+
+            // コピーボタン設定
+            const setupHeaderCopy = () => {
+                const copyBtn = document.getElementById("currentLiveKaraokeCopyBtn");
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        const textElem = document.getElementById("currentLiveKaraokeText");
+                        if (textElem && textElem.textContent) {
+                            navigator.clipboard.writeText(textElem.textContent).then(() => {
+                                showToast(`「${textElem.textContent}」をコピーしました`, "success");
+                            }).catch(() => showToast("コピー失敗", "error"));
+                        }
+                    };
+                }
+            };
+            setTimeout(setupHeaderCopy, 1000);
+
             // 2. Override Button Handler
             // Use a slightly more aggressive interval to ensure we catch any re-renders
             const bindApplyButton = () => {
@@ -5966,6 +6017,10 @@
                         if (commentColor && window.commentSettings) commentSettings.color = commentColor.value;
                         if (typeof saveCommentSettings === 'function') saveCommentSettings();
 
+                        // ヘッダー表示設定保存
+                        const headerKCheck = document.getElementById("headerKaraokeEnabledCheckbox");
+                        if (headerKCheck) localStorage.setItem("header_karaoke_enabled", headerKCheck.checked);
+
                         // Save Info List Settings
                         const infoText = document.getElementById("infoListTextInput");
                         const infoSize = document.getElementById("infoListFontSizeInput");
@@ -5984,6 +6039,13 @@
 
                         // Apply
                         window.applyFooterMode(selectedMode);
+
+                        // Refresh Telop immediatly to reflect header setting
+                        if (typeof window.fetchTelopGlobal === 'function') {
+                            // Reset timer to avoid double fetch
+                            if (window.footerTelopTimer) clearTimeout(window.footerTelopTimer);
+                            window.fetchTelopGlobal();
+                        }
 
                         // Close Settings Panel
                         const panel = document.getElementById("settingsPanel");

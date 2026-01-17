@@ -101,6 +101,16 @@ window.SettingsPanel = class SettingsPanel {
 
 
 
+
+                        <!-- ヘッダー表示設定 -->
+                        <div style="margin-bottom: 15px; margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 1.1em;">ヘッダー表示設定</h3>
+                            <div style="display:flex; align-items:center;">
+                                <input type="checkbox" id="headerKaraokeEnabledCheckbox" style="margin-right:8px; cursor:pointer; width:16px; height:16px;">
+                                <label for="headerKaraokeEnabledCheckbox" style="cursor:pointer; user-select:none;">カラオケ情報：○○ キーを表示</label>
+                            </div>
+                        </div>
+
                         <div style="margin-bottom: 15px; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
                             <h3 style="margin: 0 0 10px 0; font-size: 1.1em; border-bottom:1px solid #eee; padding-bottom:5px;">フッター表示設定</h3>
                             <div style="display:flex; flex-direction:column; gap:8px;">
